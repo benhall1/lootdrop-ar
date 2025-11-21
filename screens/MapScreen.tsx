@@ -63,38 +63,11 @@ export default function MapScreen({ navigation }: any) {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [selectedLootBox, setSelectedLootBox] = useState<LootBox | null>(null);
   const [mapRegion, setMapRegion] = useState<any>(null);
-  const [mapVariant, setMapVariant] = useState<"native" | "simple">(Platform.OS === "web" ? "simple" : "native");
-  const [nativeMapComponents, setNativeMapComponents] = useState<{
-    MapView: any;
-    Marker: any;
-    PROVIDER_DEFAULT: any;
-  } | null>(null);
-
   const categories: LocationCategory[] = ["restaurant", "retail", "entertainment", "services"];
 
   const filteredLootBoxes = selectedCategory
     ? mockLootBoxes.filter((box) => box.category === selectedCategory)
     : mockLootBoxes;
-
-  // Dynamically load react-native-maps on native platforms
-  useEffect(() => {
-    if (Platform.OS !== "web") {
-      const loadNativeMap = async () => {
-        try {
-          const maps = await import("react-native-maps");
-          setNativeMapComponents({
-            MapView: maps.default,
-            Marker: maps.Marker,
-            PROVIDER_DEFAULT: maps.PROVIDER_DEFAULT,
-          });
-        } catch (error) {
-          console.warn("react-native-maps not available, falling back to SimpleMapView", error);
-          setMapVariant("simple");
-        }
-      };
-      loadNativeMap();
-    }
-  }, []);
 
   const sortedLootBoxes = userLocation
     ? [...filteredLootBoxes].sort((a, b) => {
@@ -175,32 +148,6 @@ export default function MapScreen({ navigation }: any) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
-  const handleMarkerPress = (lootBox: LootBox) => {
-    setSelectedLootBox(lootBox);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
-    if (mapRef.current) {
-      mapRef.current.animateToRegion({
-        latitude: lootBox.latitude,
-        longitude: lootBox.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }, 500);
-    }
-  };
-
-  const handleRecenterMap = () => {
-    if (userLocation && mapRef.current) {
-      mapRef.current.animateToRegion({
-        latitude: userLocation.latitude,
-        longitude: userLocation.longitude,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
-      }, 500);
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    }
-  };
-
   return (
     <ThemedView style={styles.container}>
       <View
@@ -240,66 +187,14 @@ export default function MapScreen({ navigation }: any) {
       </ScrollView>
 
       <View style={styles.mapContainer}>
-        {mapVariant === "simple" || !nativeMapComponents ? (
-          <SimpleMapView
-            lootBoxes={filteredLootBoxes}
-            userLocation={userLocation}
-            onLootBoxPress={(lootBox) => {
-              setSelectedLootBox(lootBox);
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }}
-          />
-        ) : mapRegion ? (
-          <nativeMapComponents.MapView
-            ref={mapRef}
-            style={styles.map}
-            provider={nativeMapComponents.PROVIDER_DEFAULT}
-            initialRegion={mapRegion}
-            showsUserLocation={true}
-            showsMyLocationButton={false}
-            showsCompass={true}
-            showsScale={true}
-          >
-            {filteredLootBoxes.map((lootBox) => (
-              <nativeMapComponents.Marker
-                key={lootBox.id}
-                coordinate={{
-                  latitude: lootBox.latitude,
-                  longitude: lootBox.longitude,
-                }}
-                onPress={() => handleMarkerPress(lootBox)}
-                pinColor={lootBox.isActive ? theme.primary : theme.textSecondary}
-              >
-                <View style={[
-                  styles.customMarker,
-                  {
-                    backgroundColor: lootBox.isActive ? theme.primary : theme.backgroundSecondary,
-                    borderColor: lootBox.isActive ? theme.secondary : theme.border,
-                  }
-                ]}>
-                  <Feather 
-                    name="gift" 
-                    size={20} 
-                    color={lootBox.isActive ? "#FFFFFF" : theme.textSecondary} 
-                  />
-                </View>
-              </nativeMapComponents.Marker>
-            ))}
-          </nativeMapComponents.MapView>
-        ) : (
-          <View style={[styles.loadingContainer, { backgroundColor: theme.backgroundSecondary }]}>
-            <ThemedText>Loading map...</ThemedText>
-          </View>
-        )}
-
-        {userLocation && mapVariant === "native" && nativeMapComponents && (
-          <Pressable
-            style={[styles.recenterButton, { backgroundColor: theme.primary }]}
-            onPress={handleRecenterMap}
-          >
-            <Feather name="navigation" size={20} color="#FFFFFF" />
-          </Pressable>
-        )}
+        <SimpleMapView
+          lootBoxes={filteredLootBoxes}
+          userLocation={userLocation}
+          onLootBoxPress={(lootBox) => {
+            setSelectedLootBox(lootBox);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }}
+        />
       </View>
 
       {selectedLootBox && (
