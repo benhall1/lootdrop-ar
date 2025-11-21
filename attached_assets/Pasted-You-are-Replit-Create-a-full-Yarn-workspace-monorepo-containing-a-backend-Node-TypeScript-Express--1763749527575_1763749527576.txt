@@ -1,0 +1,295 @@
+You are Replit. Create a full Yarn-workspace monorepo containing a backend (Node/TypeScript/Express), a frontend-web (React/Vite/TypeScript), and a workers folder (TypeScript queue worker template). Include all files exactly as specified below.
+
+================================================================================
+ROOT FILES & CONFIG
+================================================================================
+
+Create the following file: package.json
+------------------------
+{
+  "name": "ar-lootbox-platform",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": [
+    "backend",
+    "frontend-web",
+    "workers",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"yarn workspace backend dev\" \"yarn workspace frontend-web dev\"",
+    "build": "yarn workspaces run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.1",
+    "typescript": "^5.3.3"
+  }
+}
+
+------------------------
+
+Create the following file: tsconfig.json
+------------------------
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "dist"
+  },
+  "include": ["**/*.ts"]
+}
+------------------------
+
+Create file: .replit
+------------------------
+run = "yarn dev"
+------------------------
+
+
+================================================================================
+SHARED TYPES
+================================================================================
+Create folder: shared
+Create file: shared/package.json
+------------------------
+{
+  "name": "shared",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "types": "index.ts"
+}
+------------------------
+
+Create file: shared/index.ts
+------------------------
+export interface ARLootbox {
+  id: string;
+  title: string;
+  latitude: number;
+  longitude: number;
+  companyId: string;
+  rewardType: "coupon" | "discount" | "message";
+  rewardValue: string;
+  expiresAt: number;
+}
+------------------------
+
+
+================================================================================
+BACKEND
+================================================================================
+Create folder: backend
+Create file: backend/package.json
+------------------------
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "ts-node-dev --respawn src/index.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.3.3"
+  }
+}
+------------------------
+
+Create file: backend/src/index.ts
+------------------------
+import express from "express";
+import cors from "cors";
+import { ARLootbox } from "shared";
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+// In-memory lootbox data
+const lootboxes: ARLootbox[] = [];
+
+app.get("/", (_, res) => {
+  res.send("Backend is running");
+});
+
+// Create lootbox
+app.post("/lootbox", (req, res) => {
+  const newBox: ARLootbox = {
+    id: Date.now().toString(),
+    ...req.body
+  };
+  lootboxes.push(newBox);
+  res.json({ success: true, lootbox: newBox });
+});
+
+// Nearby lootboxes
+app.get("/lootbox/near", (req, res) => {
+  const lat = Number(req.query.lat);
+  const lng = Number(req.query.lng);
+
+  const nearby = lootboxes.filter(box => {
+    const dist = Math.sqrt((box.latitude - lat) ** 2 + (box.longitude - lng) ** 2);
+    return dist < 0.01; // very simple placeholder
+  });
+
+  res.json(nearby);
+});
+
+app.listen(3001, () => {
+  console.log("Backend running on port 3001");
+});
+------------------------
+
+
+================================================================================
+FRONTEND WEB (React + Vite + TS)
+================================================================================
+Create folder: frontend-web
+Create file: frontend-web/package.json
+------------------------
+{
+  "name": "frontend-web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.6",
+    "@types/react-dom": "^18.2.4",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.0"
+  }
+}
+------------------------
+
+Create file: frontend-web/vite.config.ts
+------------------------
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 5173
+  }
+});
+------------------------
+
+Create file: frontend-web/index.html
+------------------------
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AR Lootbox Web</title>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>
+------------------------
+
+Create file: frontend-web/src/main.tsx
+------------------------
+import React from "react";
+import ReactDOM from "react-dom/client";
+import App from "./App";
+
+ReactDOM.createRoot(document.getElementById("root")!).render(<App />);
+------------------------
+
+Create file: frontend-web/src/App.tsx
+------------------------
+import React, { useState } from "react";
+
+export default function App() {
+  const [lootboxes, setLootboxes] = useState([]);
+
+  async function findNearby() {
+    const position = await new Promise<GeolocationPosition>((resolve) =>
+      navigator.geolocation.getCurrentPosition(resolve)
+    );
+
+    const { latitude, longitude } = position.coords;
+
+    const res = await fetch(
+      `http://localhost:3001/lootbox/near?lat=${latitude}&lng=${longitude}`
+    );
+    setLootboxes(await res.json());
+  }
+
+  return (
+    <div style={{ padding: 20 }}>
+      <h1>AR Lootbox Web Client</h1>
+      <button onClick={findNearby}>Find Nearby Lootboxes</button>
+
+      <ul>
+        {lootboxes.map((b: any) => (
+          <li key={b.id}>
+            <b>{b.title}</b> — reward: {b.rewardType} ({b.rewardValue})
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+------------------------
+
+
+
+================================================================================
+WORKERS
+================================================================================
+Create folder: workers
+Create file: workers/package.json
+------------------------
+{
+  "name": "workers",
+  "version": "1.0.0",
+  "private": true,
+  "main": "sampleWorker.ts",
+  "scripts": {
+    "dev": "ts-node-dev sampleWorker.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.3.3"
+  }
+}
+------------------------
+
+Create file: workers/sampleWorker.ts
+------------------------
+console.log("Worker online — placeholder for AI lootbox generation pipelines.");
+
+// Example: AI pipeline stub
+export async function generateLootboxArt(companyName: string) {
+  return `Generated AR lootbox art for ${companyName}`;
+}
+------------------------
+
+================================================================================
+END OF PROMPT
+================================================================================
