@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { View, StyleSheet, ScrollView, Pressable, Linking, Platform, Alert } from "react-native";
+import MapView, { Marker, PROVIDER_DEFAULT, Region } from "react-native-maps";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText } from "../components/ThemedText";
 import { ThemedView } from "../components/ThemedView";
 import { CategoryChip } from "../components/CategoryChip";
 import { CountdownTimer } from "../components/CountdownTimer";
-import { FAB } from "../components/FAB";
 import { BusinessLogo } from "../components/BusinessLogo";
-import { SimpleMapView } from "../components/SimpleMapView";
+import { Button } from "../components/Button";
 import { useTheme } from "../hooks/useTheme";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Spacing, BorderRadius } from "../constants/theme";
@@ -56,10 +57,12 @@ export default function MapScreen({ navigation }: any) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
+  const mapRef = useRef<MapView>(null);
   const [selectedCategory, setSelectedCategory] = useState<LocationCategory | null>(null);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [selectedLootBox, setSelectedLootBox] = useState<LootBox | null>(null);
+  const [mapRegion, setMapRegion] = useState<Region | null>(null);
 
   const categories: LocationCategory[] = ["restaurant", "retail", "entertainment", "services"];
 
@@ -90,6 +93,20 @@ export default function MapScreen({ navigation }: any) {
       const location = await LocationService.getCurrentLocation();
       if (location) {
         setUserLocation(location);
+        setMapRegion({
+          latitude: location.latitude,
+          longitude: location.longitude,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        });
+      } else {
+        const defaultLocation = mockLootBoxes[0];
+        setMapRegion({
+          latitude: defaultLocation.latitude,
+          longitude: defaultLocation.longitude,
+          latitudeDelta: 0.05,
+          longitudeDelta: 0.05,
+        });
       }
     };
 
@@ -103,9 +120,59 @@ export default function MapScreen({ navigation }: any) {
   }, []);
 
   const handleToggleFavorite = async (lootBoxId: string) => {
-    const isFavorite = await StorageService.toggleFavorite(lootBoxId);
+    await StorageService.toggleFavorite(lootBoxId);
     const favs = await StorageService.getFavoriteLocations();
     setFavorites(favs);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
+
+  const handleGetDirections = (lootBox: LootBox) => {
+    const destination = `${lootBox.latitude},${lootBox.longitude}`;
+    const label = encodeURIComponent(lootBox.businessName);
+
+    let url = "";
+    if (Platform.OS === "ios") {
+      url = `maps://app?daddr=${destination}&q=${label}`;
+    } else {
+      url = `google.navigation:q=${destination}`;
+    }
+
+    Linking.canOpenURL(url).then((supported) => {
+      if (supported) {
+        Linking.openURL(url);
+      } else {
+        const browserUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+        Linking.openURL(browserUrl);
+      }
+    });
+
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
+
+  const handleMarkerPress = (lootBox: LootBox) => {
+    setSelectedLootBox(lootBox);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    
+    if (mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: lootBox.latitude,
+        longitude: lootBox.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }, 500);
+    }
+  };
+
+  const handleRecenterMap = () => {
+    if (userLocation && mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      }, 500);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
   };
 
   return (
@@ -123,7 +190,7 @@ export default function MapScreen({ navigation }: any) {
         <ThemedText type="h3">Loot Drops Nearby</ThemedText>
         {userLocation && (
           <ThemedText style={[styles.locationText, { color: theme.textSecondary }]}>
-            <Feather name="navigation" size={14} /> Sorted by distance
+            <Feather name="navigation" size={14} /> Live location enabled
           </ThemedText>
         )}
       </View>
@@ -146,17 +213,58 @@ export default function MapScreen({ navigation }: any) {
         ))}
       </ScrollView>
 
-      <View style={[styles.mapWrapper, { backgroundColor: theme.backgroundRoot }]}>
-        <SimpleMapView
-          lootBoxes={filteredLootBoxes}
-          userLocation={userLocation}
-          onLootBoxPress={(lootBox) => {
-            const index = sortedLootBoxes.findIndex(box => box.id === lootBox.id);
-            if (index !== -1) {
-              setSelectedLootBox(lootBox);
-            }
-          }}
-        />
+      <View style={styles.mapContainer}>
+        {mapRegion ? (
+          <MapView
+            ref={mapRef}
+            style={styles.map}
+            provider={PROVIDER_DEFAULT}
+            initialRegion={mapRegion}
+            showsUserLocation={true}
+            showsMyLocationButton={false}
+            showsCompass={true}
+            showsScale={true}
+          >
+            {filteredLootBoxes.map((lootBox) => (
+              <Marker
+                key={lootBox.id}
+                coordinate={{
+                  latitude: lootBox.latitude,
+                  longitude: lootBox.longitude,
+                }}
+                onPress={() => handleMarkerPress(lootBox)}
+                pinColor={lootBox.isActive ? theme.primary : theme.textSecondary}
+              >
+                <View style={[
+                  styles.customMarker,
+                  {
+                    backgroundColor: lootBox.isActive ? theme.primary : theme.backgroundSecondary,
+                    borderColor: lootBox.isActive ? theme.secondary : theme.border,
+                  }
+                ]}>
+                  <Feather 
+                    name="gift" 
+                    size={20} 
+                    color={lootBox.isActive ? "#FFFFFF" : theme.textSecondary} 
+                  />
+                </View>
+              </Marker>
+            ))}
+          </MapView>
+        ) : (
+          <View style={[styles.loadingContainer, { backgroundColor: theme.backgroundSecondary }]}>
+            <ThemedText>Loading map...</ThemedText>
+          </View>
+        )}
+
+        {userLocation && (
+          <Pressable
+            style={[styles.recenterButton, { backgroundColor: theme.primary }]}
+            onPress={handleRecenterMap}
+          >
+            <Feather name="navigation" size={20} color="#FFFFFF" />
+          </Pressable>
+        )}
       </View>
 
       {selectedLootBox && (
@@ -174,130 +282,92 @@ export default function MapScreen({ navigation }: any) {
               <BusinessLogo
                 businessName={selectedLootBox.businessName}
                 logoUrl={selectedLootBox.businessLogo}
-                size={40}
+                size={48}
               />
-              <View style={styles.businessText}>
+              <View style={styles.businessDetails}>
                 <ThemedText type="h4" numberOfLines={1}>
                   {selectedLootBox.businessName}
                 </ThemedText>
-                <ThemedText
-                  style={[styles.couponTitle, { color: theme.textSecondary }]}
-                  numberOfLines={1}
-                >
-                  {selectedLootBox.coupon.title}
+                <ThemedText style={[styles.categoryText, { color: theme.textSecondary }]}>
+                  {selectedLootBox.category.charAt(0).toUpperCase() + 
+                   selectedLootBox.category.slice(1)}
                 </ThemedText>
-              </View>
-            </View>
-            <Pressable onPress={() => setSelectedLootBox(null)}>
-              <Feather name="x" size={24} color={theme.text} />
-            </Pressable>
-          </View>
-          {selectedLootBox.isActive && (
-            <CountdownTimer targetTime={selectedLootBox.dropTime} style={styles.selectedTimer} />
-          )}
-        </View>
-      )}
-
-      <ScrollView
-        style={styles.listContainer}
-        contentContainerStyle={[
-          styles.listContent,
-          { paddingBottom: tabBarHeight + Spacing["2xl"] * 2 },
-        ]}
-      >
-        {sortedLootBoxes.map((lootBox) => {
-          const distance = userLocation
-            ? calculateDistance(
-                userLocation.latitude,
-                userLocation.longitude,
-                lootBox.latitude,
-                lootBox.longitude
-              )
-            : null;
-
-          return (
-            <View
-              key={lootBox.id}
-              style={[
-                styles.lootBoxCard,
-                {
-                  backgroundColor: theme.backgroundDefault,
-                  borderColor: lootBox.isActive ? theme.primary : theme.border,
-                },
-              ]}
-            >
-              <View style={styles.cardHeader}>
-                <View style={styles.businessInfo}>
-                  <BusinessLogo
-                    businessName={lootBox.businessName}
-                    logoUrl={lootBox.businessLogo}
-                    size={40}
+                {userLocation && (
+                  <DistanceBadge
+                    distance={calculateDistance(
+                      userLocation.latitude,
+                      userLocation.longitude,
+                      selectedLootBox.latitude,
+                      selectedLootBox.longitude
+                    )}
+                    theme={theme}
                   />
-                  <View style={styles.businessText}>
-                    <ThemedText type="h4" numberOfLines={1}>
-                      {lootBox.businessName}
-                    </ThemedText>
-                    <ThemedText
-                      style={[styles.couponTitle, { color: theme.textSecondary }]}
-                      numberOfLines={1}
-                    >
-                      {lootBox.coupon.title}
-                    </ThemedText>
-                  </View>
-                </View>
-                <Pressable onPress={() => handleToggleFavorite(lootBox.id)}>
-                  <Feather
-                    name="heart"
-                    size={24}
-                    color={favorites.includes(lootBox.id) ? theme.primary : theme.textSecondary}
-                    style={{ opacity: favorites.includes(lootBox.id) ? 1 : 0.5 }}
-                  />
-                </Pressable>
-              </View>
-
-              <View style={styles.cardFooter}>
-                <View style={styles.cardMetadata}>
-                  {distance !== null && <DistanceBadge distance={distance} theme={theme} />}
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      {
-                        backgroundColor: lootBox.isActive
-                          ? theme.primary + "20"
-                          : theme.backgroundSecondary,
-                      },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.statusDot,
-                        { backgroundColor: lootBox.isActive ? theme.primary : theme.textSecondary },
-                      ]}
-                    />
-                    <ThemedText
-                      style={[
-                        styles.statusText,
-                        { color: lootBox.isActive ? theme.primary : theme.textSecondary },
-                      ]}
-                    >
-                      {lootBox.isActive ? "Active" : "Expired"}
-                    </ThemedText>
-                  </View>
-                </View>
-                {lootBox.isActive && (
-                  <CountdownTimer targetTime={lootBox.dropTime} style={styles.cardTimer} />
                 )}
               </View>
             </View>
-          );
-        })}
-      </ScrollView>
+            <Pressable
+              onPress={() => handleToggleFavorite(selectedLootBox.id)}
+              style={styles.favoriteButton}
+            >
+              <Feather
+                name={favorites.includes(selectedLootBox.id) ? "heart" : "heart"}
+                size={24}
+                color={favorites.includes(selectedLootBox.id) ? theme.error : theme.textSecondary}
+                fill={favorites.includes(selectedLootBox.id) ? theme.error : "none"}
+              />
+            </Pressable>
+          </View>
 
-      <FAB
-        icon="camera"
-        onPress={() => navigation.navigate("Discover")}
-        style={[styles.fab, { bottom: tabBarHeight + Spacing.xl }]}
-      />
+          <View style={styles.cardContent}>
+            <View style={styles.statusRow}>
+              {selectedLootBox.isActive ? (
+                <>
+                  <View style={[styles.statusBadge, { backgroundColor: theme.success + "20" }]}>
+                    <Feather name="check-circle" size={16} color={theme.success} />
+                    <ThemedText style={[styles.statusText, { color: theme.success }]}>
+                      Available Now
+                    </ThemedText>
+                  </View>
+                  <ThemedText style={[styles.rewardText, { color: theme.secondary }]}>
+                    {selectedLootBox.coupon.value}
+                  </ThemedText>
+                </>
+              ) : (
+                <>
+                  <View style={[styles.statusBadge, { backgroundColor: theme.error + "20" }]}>
+                    <Feather name="clock" size={16} color={theme.error} />
+                    <ThemedText style={[styles.statusText, { color: theme.error }]}>
+                      Recharging
+                    </ThemedText>
+                  </View>
+                  <CountdownTimer
+                    targetTime={selectedLootBox.dropTime}
+                  />
+                </>
+              )}
+            </View>
+
+            <Button
+              onPress={() => handleGetDirections(selectedLootBox)}
+              style={[styles.directionsButton, { backgroundColor: theme.primary }]}
+            >
+              <Feather name="navigation" size={18} color="#FFFFFF" />
+              <ThemedText style={styles.directionsButtonText}>
+                Get Directions
+              </ThemedText>
+            </Button>
+
+            <Pressable
+              onPress={() => setSelectedLootBox(null)}
+              style={styles.closeButton}
+            >
+              <ThemedText style={[styles.closeText, { color: theme.textSecondary }]}>
+                Close
+              </ThemedText>
+            </Pressable>
+          </View>
+        </View>
+      )}
     </ThemedView>
   );
 }
@@ -307,110 +377,144 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: Spacing.lg,
+    paddingHorizontal: Spacing.xl,
+    gap: Spacing.xs,
   },
   locationText: {
     fontSize: 14,
-    marginTop: Spacing.xs,
   },
   categoryScroll: {
-    flexGrow: 0,
+    maxHeight: 60,
   },
   categoryContainer: {
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    gap: Spacing.sm,
   },
-  mapWrapper: {
-    paddingVertical: Spacing.lg,
-    alignItems: "center",
+  mapContainer: {
+    flex: 1,
+    position: "relative",
   },
-  selectedCard: {
-    marginHorizontal: Spacing.lg,
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    borderWidth: 2,
-    marginBottom: Spacing.md,
-  },
-  selectedTimer: {
-    marginTop: Spacing.md,
-    alignSelf: "flex-start",
-  },
-  listContainer: {
+  map: {
     flex: 1,
   },
-  listContent: {
-    padding: Spacing.lg,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  lootBoxCard: {
+  customMarker: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 3,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  recenterButton: {
+    position: "absolute",
+    bottom: Spacing.xl,
+    right: Spacing.xl,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  selectedCard: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    borderTopWidth: 2,
     padding: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    borderWidth: 2,
-    marginBottom: Spacing.md,
+    gap: Spacing.md,
   },
   cardHeader: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: Spacing.md,
+    alignItems: "flex-start",
+    gap: Spacing.md,
   },
   businessInfo: {
+    flex: 1,
     flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-    marginRight: Spacing.sm,
+    gap: Spacing.md,
   },
-  businessText: {
+  businessDetails: {
     flex: 1,
-    marginLeft: Spacing.md,
+    gap: Spacing.xs,
   },
-  couponTitle: {
+  categoryText: {
     fontSize: 14,
-    marginTop: Spacing.xs,
   },
-  cardFooter: {
+  favoriteButton: {
+    padding: Spacing.sm,
+  },
+  cardContent: {
+    gap: Spacing.md,
+  },
+  statusRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  cardMetadata: {
+  statusBadge: {
     flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+  },
+  statusText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  rewardText: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  directionsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: Spacing.sm,
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+  },
+  directionsButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  closeButton: {
+    alignItems: "center",
+    padding: Spacing.sm,
+  },
+  closeText: {
+    fontSize: 14,
   },
   distanceBadge: {
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.xs,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
+    paddingVertical: 4,
     borderRadius: BorderRadius.sm,
     borderWidth: 1,
+    alignSelf: "flex-start",
   },
   distanceText: {
     fontSize: 12,
-    fontWeight: "600",
-  },
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.xs,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.sm,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  cardTimer: {
-    alignSelf: "flex-end",
-  },
-  fab: {
-    position: "absolute",
-    right: Spacing.lg,
+    fontWeight: "500",
   },
 });
