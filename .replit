@@ -1,5 +1,5 @@
 entrypoint = "README.md"
-modules = ["nodejs-22"]
+modules = ["nodejs-22", "postgresql-16"]
 
 [nix]
 channel = "stable-24_05"
@@ -19,6 +19,10 @@ externalPort = 3001
 [[ports]]
 localPort = 42405
 externalPort = 3002
+
+[[ports]]
+localPort = 46829
+externalPort = 3003
 
 [workflows]
 runButton = "Project"
@@ -75,6 +79,7 @@ waitForPort = 8081
 
 [agent]
 stack = "EXPO"
+integrations = ["stripe:1.0.0"]
 
 [deployment]
 deploymentTarget = "static"
