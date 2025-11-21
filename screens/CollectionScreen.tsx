@@ -1,17 +1,30 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, StyleSheet, FlatList, Alert } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { ScreenScrollView } from "../components/ScreenScrollView";
 import { ThemedText } from "../components/ThemedText";
 import { ThemedView } from "../components/ThemedView";
 import { CouponCard } from "../components/CouponCard";
 import { useTheme } from "../hooks/useTheme";
 import { Spacing, BorderRadius } from "../constants/theme";
-import { mockCollectedCoupons } from "../services/mockData";
+import { StorageService } from "../services/storageService";
+import { CollectedCoupon } from "../types";
 
 export default function CollectionScreen() {
   const { theme } = useTheme();
-  const [coupons] = useState(mockCollectedCoupons);
+  const [coupons, setCoupons] = useState<CollectedCoupon[]>([]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadCoupons();
+    }, [])
+  );
+
+  const loadCoupons = async () => {
+    const collected = await StorageService.getCollectedCoupons();
+    setCoupons(collected);
+  };
 
   const activeCoupons = coupons.filter(
     (c) => !c.isUsed && c.expiresAt > Date.now()
@@ -27,18 +40,30 @@ export default function CollectionScreen() {
     return sum;
   }, 0);
 
-  const handleCouponPress = (coupon: typeof coupons[0]) => {
-    Alert.alert(
-      coupon.title,
-      `${coupon.description}\n\nCode: ${coupon.code}\n\nTerms: Valid at ${coupon.businessName}`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Mark as Used",
-          onPress: () => Alert.alert("Success", "Coupon marked as used!"),
-        },
-      ]
-    );
+  const handleCouponPress = async (coupon: CollectedCoupon) => {
+    if (coupon.isUsed) {
+      Alert.alert(
+        coupon.title,
+        `${coupon.description}\n\nCode: ${coupon.code}\n\nTerms: Valid at ${coupon.businessName}\n\nThis coupon has already been used.`,
+        [{ text: "OK" }]
+      );
+    } else {
+      Alert.alert(
+        coupon.title,
+        `${coupon.description}\n\nCode: ${coupon.code}\n\nTerms: Valid at ${coupon.businessName}`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Mark as Used",
+            onPress: async () => {
+              await StorageService.markCouponAsUsed(coupon.id);
+              await loadCoupons();
+              Alert.alert("Success", "Coupon marked as used!");
+            },
+          },
+        ]
+      );
+    }
   };
 
   return (

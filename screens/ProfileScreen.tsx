@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, StyleSheet, Pressable, Image, Alert } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -7,9 +7,41 @@ import { ThemedText } from "../components/ThemedText";
 import { Button } from "../components/Button";
 import { useTheme } from "../hooks/useTheme";
 import { Spacing, BorderRadius, Layout } from "../constants/theme";
+import { AuthService, User } from "../services/authService";
+import { StorageService } from "../services/storageService";
 
 export default function ProfileScreen() {
   const { theme } = useTheme();
+  const [user, setUser] = useState<User | null>(null);
+  const [stats, setStats] = useState({
+    coupons: 0,
+    savings: 0,
+    visits: 0,
+  });
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  const loadProfile = async () => {
+    const currentUser = await AuthService.getCurrentUser();
+    setUser(currentUser);
+
+    const collectedCoupons = await StorageService.getCollectedCoupons();
+    const savings = collectedCoupons.reduce((sum, coupon) => {
+      if (coupon.discountType === "fixed" && coupon.isUsed) {
+        const value = parseFloat(coupon.value.replace("$", ""));
+        return sum + value;
+      }
+      return sum;
+    }, 0);
+
+    setStats({
+      coupons: collectedCoupons.length,
+      savings: Math.round(savings),
+      visits: collectedCoupons.filter(c => c.isUsed).length,
+    });
+  };
 
   const handleScheduleDrop = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -33,7 +65,10 @@ export default function ProfileScreen() {
       {
         text: "Sign Out",
         style: "destructive",
-        onPress: () => Alert.alert("Signed Out", "You have been signed out."),
+        onPress: async () => {
+          await AuthService.signOut();
+          Alert.alert("Signed Out", "Please restart the app to sign in again.");
+        },
       },
     ]);
   };
@@ -46,12 +81,16 @@ export default function ProfileScreen() {
           style={styles.avatar}
         />
         <ThemedText type="h2" style={styles.username}>
-          Treasure Hunter
+          {user?.name || "Treasure Hunter"}
         </ThemedText>
         <ThemedText
           style={[styles.subtitle, { color: theme.textSecondary }]}
         >
-          Gold Tier Member
+          {user?.avatarTier === "gold"
+            ? "Gold Tier Member"
+            : user?.avatarTier === "silver"
+            ? "Silver Tier Member"
+            : "Bronze Tier Member"}
         </ThemedText>
       </View>
 
@@ -68,7 +107,7 @@ export default function ProfileScreen() {
           <View style={styles.statItem}>
             <Feather name="award" size={24} color={theme.secondary} />
             <ThemedText type="h3" style={styles.statValue}>
-              12
+              {stats.coupons}
             </ThemedText>
             <ThemedText
               style={[styles.statLabel, { color: theme.textSecondary }]}
@@ -79,7 +118,7 @@ export default function ProfileScreen() {
           <View style={styles.statItem}>
             <Feather name="dollar-sign" size={24} color={theme.success} />
             <ThemedText type="h3" style={styles.statValue}>
-              $247
+              ${stats.savings}
             </ThemedText>
             <ThemedText
               style={[styles.statLabel, { color: theme.textSecondary }]}
@@ -90,7 +129,7 @@ export default function ProfileScreen() {
           <View style={styles.statItem}>
             <Feather name="map-pin" size={24} color={theme.accent} />
             <ThemedText type="h3" style={styles.statValue}>
-              8
+              {stats.visits}
             </ThemedText>
             <ThemedText
               style={[styles.statLabel, { color: theme.textSecondary }]}

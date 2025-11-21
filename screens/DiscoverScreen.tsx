@@ -6,23 +6,47 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText } from "../components/ThemedText";
 import { ThemedView } from "../components/ThemedView";
 import { FAB } from "../components/FAB";
+import { ARCamera } from "../components/ARCamera";
 import { useTheme } from "../hooks/useTheme";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Spacing, Layout, BorderRadius } from "../constants/theme";
 import { mockLootBoxes } from "../services/mockData";
 import { calculateDistance, formatDistance } from "../services/geolocation";
-import { UserLocation, LootBox } from "../types";
+import { LocationService } from "../services/locationService";
+import { StorageService } from "../services/storageService";
+import { UserLocation, LootBox, CollectedCoupon } from "../types";
 
 export default function DiscoverScreen({ navigation }: any) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
-  const [userLocation] = useState<UserLocation>({
-    latitude: 37.7849,
-    longitude: -122.4094,
-  });
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [nearbyLootBoxes, setNearbyLootBoxes] = useState<LootBox[]>([]);
   const [closestLootBox, setClosestLootBox] = useState<LootBox | null>(null);
+  const [showCamera, setShowCamera] = useState(true);
+
+  useEffect(() => {
+    let locationSubscription: any = null;
+
+    const startLocationTracking = async () => {
+      const currentLocation = await LocationService.getCurrentLocation();
+      if (currentLocation) {
+        setUserLocation(currentLocation);
+        
+        locationSubscription = await LocationService.watchLocation((location) => {
+          setUserLocation(location);
+        });
+      }
+    };
+
+    startLocationTracking();
+
+    return () => {
+      if (locationSubscription) {
+        locationSubscription.remove();
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (userLocation) {
@@ -53,13 +77,28 @@ export default function DiscoverScreen({ navigation }: any) {
     }
   }, [userLocation]);
 
-  const handleDiscoverLootBox = () => {
-    if (closestLootBox && closestLootBox.isActive) {
+  const handleDiscoverLootBox = async (lootBox: LootBox) => {
+    if (lootBox && lootBox.isActive) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      const collectedCoupon: CollectedCoupon = {
+        ...lootBox.coupon,
+        collectedAt: Date.now(),
+        isUsed: false,
+      };
+      
+      await StorageService.addCollectedCoupon(collectedCoupon);
+      
       Alert.alert(
         "Loot Box Opened!",
-        `You discovered: ${closestLootBox.coupon.title}\nCode: ${closestLootBox.coupon.code}`,
-        [{ text: "Add to Collection", onPress: () => {} }]
+        `You discovered: ${lootBox.coupon.title}\nCode: ${lootBox.coupon.code}`,
+        [
+          { 
+            text: "View Collection", 
+            onPress: () => navigation.navigate("Collection") 
+          },
+          { text: "OK", style: "cancel" }
+        ]
       );
     } else {
       Alert.alert(
@@ -102,24 +141,31 @@ export default function DiscoverScreen({ navigation }: any) {
         </Pressable>
       </View>
 
-      <View style={styles.cameraPlaceholder}>
-        <Feather
-          name="camera"
-          size={64}
-          color={theme.textSecondary}
-          style={{ opacity: 0.3 }}
+      {showCamera ? (
+        <ARCamera
+          nearbyLootBoxes={nearbyLootBoxes}
+          onLootBoxTap={handleDiscoverLootBox}
         />
-        <ThemedText
-          style={[styles.placeholderText, { color: theme.textSecondary }]}
-        >
-          AR Camera View
-        </ThemedText>
-        <ThemedText
-          style={[styles.placeholderSubtext, { color: theme.textSecondary }]}
-        >
-          Camera access required for full AR experience
-        </ThemedText>
-      </View>
+      ) : (
+        <View style={styles.cameraPlaceholder}>
+          <Feather
+            name="camera"
+            size={64}
+            color={theme.textSecondary}
+            style={{ opacity: 0.3 }}
+          />
+          <ThemedText
+            style={[styles.placeholderText, { color: theme.textSecondary }]}
+          >
+            AR Camera View
+          </ThemedText>
+          <ThemedText
+            style={[styles.placeholderSubtext, { color: theme.textSecondary }]}
+          >
+            Camera access required for full AR experience
+          </ThemedText>
+        </View>
+      )}
 
       {closestLootBox && (
         <View
@@ -186,7 +232,7 @@ export default function DiscoverScreen({ navigation }: any) {
 
       {closestLootBox && closestLootBox.isActive && (
         <Pressable
-          onPress={handleDiscoverLootBox}
+          onPress={() => handleDiscoverLootBox(closestLootBox)}
           style={[
             styles.discoverButton,
             {
