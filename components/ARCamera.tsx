@@ -4,6 +4,7 @@ import { Camera, CameraView } from "expo-camera";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { ThemedText } from "./ThemedText";
+import { BusinessLogo } from "./BusinessLogo";
 import { useTheme } from "../hooks/useTheme";
 import { Spacing, BorderRadius } from "../constants/theme";
 import { LootBox } from "../types";
@@ -82,10 +83,10 @@ export function ARCamera({ nearbyLootBoxes, onLootBoxTap }: ARCameraProps) {
                   },
                 ]}
               >
-                <Feather
-                  name="gift"
-                  size={32}
-                  color={lootBox.isActive ? "#FFF" : theme.textSecondary}
+                <BusinessLogo
+                  businessName={lootBox.businessName}
+                  logoUrl={lootBox.businessLogo}
+                  size={50}
                 />
               </View>
 
@@ -145,6 +146,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     justifyContent: "center",
     alignItems: "center",
+    overflow: "hidden",
   },
   activePulse: {
     position: "absolute",

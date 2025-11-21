@@ -7,6 +7,7 @@ export interface LootBox {
   longitude: number;
   category: LocationCategory;
   businessName: string;
+  businessLogo?: string;
   dropTime: number;
   coupon: Coupon;
   isActive: boolean;

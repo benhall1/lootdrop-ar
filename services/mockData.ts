@@ -1,4 +1,5 @@
 import { LootBox, CollectedCoupon } from "../types";
+import { LogoService } from "./logoService";
 
 const now = Date.now();
 const oneHour = 60 * 60 * 1000;
@@ -12,6 +13,7 @@ export const mockLootBoxes: LootBox[] = [
     longitude: -122.4094,
     category: "restaurant",
     businessName: "Blue Bottle Coffee",
+    businessLogo: LogoService.getBusinessLogo("Blue Bottle Coffee"),
     dropTime: now + 30 * 60 * 1000,
     isActive: false,
     coupon: {
@@ -23,6 +25,7 @@ export const mockLootBoxes: LootBox[] = [
       value: "50%",
       expiresAt: now + 7 * oneDay,
       businessName: "Blue Bottle Coffee",
+      businessLogo: LogoService.getBusinessLogo("Blue Bottle Coffee"),
     },
   },
   {
@@ -32,6 +35,7 @@ export const mockLootBoxes: LootBox[] = [
     longitude: -122.4064,
     category: "restaurant",
     businessName: "Tony's Pizzeria",
+    businessLogo: LogoService.getBusinessLogo("Tony's Pizzeria"),
     dropTime: now + 2 * oneHour,
     isActive: false,
     coupon: {
@@ -43,6 +47,7 @@ export const mockLootBoxes: LootBox[] = [
       value: "20%",
       expiresAt: now + 14 * oneDay,
       businessName: "Tony's Pizzeria",
+      businessLogo: LogoService.getBusinessLogo("Tony's Pizzeria"),
     },
   },
   {
@@ -52,6 +57,7 @@ export const mockLootBoxes: LootBox[] = [
     longitude: -122.4089,
     category: "restaurant",
     businessName: "Juice Bar",
+    businessLogo: LogoService.getBusinessLogo("Juice Bar"),
     dropTime: now - 10 * 60 * 1000,
     isActive: true,
     coupon: {
@@ -63,6 +69,7 @@ export const mockLootBoxes: LootBox[] = [
       value: "Free",
       expiresAt: now + 3 * oneDay,
       businessName: "Juice Bar",
+      businessLogo: LogoService.getBusinessLogo("Juice Bar"),
     },
   },
   {
@@ -72,6 +79,7 @@ export const mockLootBoxes: LootBox[] = [
     longitude: -122.4074,
     category: "retail",
     businessName: "City Lights Books",
+    businessLogo: LogoService.getBusinessLogo("City Lights Books"),
     dropTime: now + 4 * oneHour,
     isActive: false,
     coupon: {
@@ -83,6 +91,7 @@ export const mockLootBoxes: LootBox[] = [
       value: "$15",
       expiresAt: now + 30 * oneDay,
       businessName: "City Lights Books",
+      businessLogo: LogoService.getBusinessLogo("City Lights Books"),
     },
   },
   {
@@ -92,6 +101,7 @@ export const mockLootBoxes: LootBox[] = [
     longitude: -122.4104,
     category: "services",
     businessName: "FitZone Gym",
+    businessLogo: LogoService.getBusinessLogo("FitZone Gym"),
     dropTime: now - 5 * 60 * 1000,
     isActive: true,
     coupon: {
@@ -103,6 +113,7 @@ export const mockLootBoxes: LootBox[] = [
       value: "30%",
       expiresAt: now + 10 * oneDay,
       businessName: "FitZone Gym",
+      businessLogo: LogoService.getBusinessLogo("FitZone Gym"),
     },
   },
   {
@@ -112,6 +123,7 @@ export const mockLootBoxes: LootBox[] = [
     longitude: -122.4054,
     category: "entertainment",
     businessName: "Cinema Palace",
+    businessLogo: LogoService.getBusinessLogo("Cinema Palace"),
     dropTime: now + 6 * oneHour,
     isActive: false,
     coupon: {
@@ -123,6 +135,7 @@ export const mockLootBoxes: LootBox[] = [
       value: "BOGO",
       expiresAt: now + 7 * oneDay,
       businessName: "Cinema Palace",
+      businessLogo: LogoService.getBusinessLogo("Cinema Palace"),
     },
   },
 ];
@@ -137,6 +150,7 @@ export const mockCollectedCoupons: CollectedCoupon[] = [
     value: "25%",
     expiresAt: now + 5 * oneDay,
     businessName: "Taco Heaven",
+    businessLogo: LogoService.getBusinessLogo("Taco Heaven"),
     collectedAt: now - 2 * oneDay,
     isUsed: false,
   },
@@ -149,6 +163,7 @@ export const mockCollectedCoupons: CollectedCoupon[] = [
     value: "$10",
     expiresAt: now + 2 * oneDay,
     businessName: "Morning Brew",
+    businessLogo: LogoService.getBusinessLogo("Morning Brew"),
     collectedAt: now - 3 * oneDay,
     isUsed: false,
   },

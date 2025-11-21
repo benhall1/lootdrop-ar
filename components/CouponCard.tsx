@@ -3,6 +3,7 @@ import { View, StyleSheet, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "./ThemedText";
 import { ThemedView } from "./ThemedView";
+import { BusinessLogo } from "./BusinessLogo";
 import { useTheme } from "../hooks/useTheme";
 import { Spacing, BorderRadius, Typography, Shadows } from "../constants/theme";
 import { CollectedCoupon } from "../types";
@@ -31,16 +32,11 @@ export function CouponCard({ coupon, onPress }: CouponCardProps) {
       ]}
     >
       <View style={styles.header}>
-        <View
-          style={[
-            styles.iconContainer,
-            {
-              backgroundColor: theme.backgroundSecondary,
-            },
-          ]}
-        >
-          <Feather name="gift" size={20} color={theme.primary} />
-        </View>
+        <BusinessLogo
+          businessName={coupon.businessName}
+          logoUrl={coupon.businessLogo}
+          size={40}
+        />
         <View
           style={[
             styles.badge,
@@ -99,13 +95,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: Spacing.md,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
   },
   badge: {
     paddingHorizontal: Spacing.sm,
