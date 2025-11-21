@@ -128,6 +128,7 @@ export default function SubscriptionScreen() {
   const { theme } = useTheme();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isPremium, setIsPremium] = useState(false);
 
@@ -138,34 +139,55 @@ export default function SubscriptionScreen() {
   const loadData = async () => {
     try {
       setLoading(true);
+      setError(null);
+      setProducts([]);
+      setIsPremium(false);
 
       let currentUser = await UserService.getUser();
       
       if (!currentUser) {
         const guestId = UserService.generateGuestId();
-        const result = await ApiService.createGuestUser(
-          `${guestId}@guest.lootdrop.app`,
-          "Guest User"
-        );
-        currentUser = {
-          id: result.user.id,
-          email: result.user.email,
-          name: result.user.name || "Guest User",
-          isPremium: result.user.is_premium || false,
-        };
-        await UserService.saveUser(currentUser);
+        try {
+          const result = await ApiService.createGuestUser(
+            `${guestId}@guest.lootdrop.app`,
+            "Guest User"
+          );
+          currentUser = {
+            id: result.user.id,
+            email: result.user.email,
+            name: result.user.name || "Guest User",
+            isPremium: result.user.is_premium || false,
+          };
+          await UserService.saveUser(currentUser);
+        } catch (apiError) {
+          setError("Unable to connect to server. Please check your connection and try again.");
+          setLoading(false);
+          return;
+        }
       }
 
       setUser(currentUser);
 
-      const subscriptionData = await ApiService.getSubscription(currentUser.id);
-      setIsPremium(subscriptionData.isPremium || false);
+      try {
+        const subscriptionData = await ApiService.getSubscription(currentUser.id);
+        setIsPremium(subscriptionData.isPremium || false);
+      } catch (subError) {
+        console.error("Subscription check error:", subError);
+      }
 
-      const productsData = await ApiService.getProductsWithPrices();
-      setProducts(productsData);
+      try {
+        const productsData = await ApiService.getProductsWithPrices();
+        if (!productsData || productsData.length === 0) {
+          setError("No subscription plans available at the moment. Please try again later.");
+        } else {
+          setProducts(productsData);
+        }
+      } catch (productsError) {
+        setError("Unable to load subscription plans. Please check your connection and try again.");
+      }
     } catch (error) {
       console.error("Load data error:", error);
-      Alert.alert("Error", "Failed to load subscription information");
+      setError("Something went wrong. Please try again later.");
     } finally {
       setLoading(false);
     }
@@ -208,6 +230,33 @@ export default function SubscriptionScreen() {
     return (
       <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
         <ActivityIndicator size="large" color={theme.primary} />
+        <ThemedText style={[styles.loadingText, { color: theme.textSecondary }]}>
+          Loading subscription plans...
+        </ThemedText>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+        <Feather name="alert-circle" size={48} color={theme.textSecondary} />
+        <ThemedText type="h3" style={styles.errorTitle}>
+          Oops!
+        </ThemedText>
+        <ThemedText style={[styles.errorMessage, { color: theme.textSecondary }]}>
+          {error}
+        </ThemedText>
+        <Pressable
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            loadData();
+          }}
+          style={[styles.retryButton, { backgroundColor: theme.primary }]}
+        >
+          <Feather name="refresh-cw" size={20} color="#FFFFFF" />
+          <ThemedText style={styles.retryButtonText}>Try Again</ThemedText>
+        </Pressable>
       </View>
     );
   }
@@ -277,6 +326,34 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    padding: Spacing.xl,
+  },
+  loadingText: {
+    marginTop: Spacing.lg,
+    fontSize: 14,
+  },
+  errorTitle: {
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.sm,
+  },
+  errorMessage: {
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: Spacing.xl,
+    paddingHorizontal: Spacing.lg,
+  },
+  retryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
   header: {
     paddingHorizontal: Spacing.lg,
