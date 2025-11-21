@@ -18,21 +18,6 @@ import { LocationService } from "../services/locationService";
 import { StorageService } from "../services/storageService";
 import { LocationCategory, LootBox, UserLocation } from "../types";
 
-let MapView: any = null;
-let Marker: any = null;
-let PROVIDER_DEFAULT: any = null;
-
-if (Platform.OS !== "web") {
-  try {
-    const maps = require("react-native-maps");
-    MapView = maps.default;
-    Marker = maps.Marker;
-    PROVIDER_DEFAULT = maps.PROVIDER_DEFAULT;
-  } catch (e) {
-    console.log("react-native-maps not available");
-  }
-}
-
 function DistanceBadge({ distance, theme }: { distance: number; theme: any }) {
   return (
     <View
@@ -78,12 +63,38 @@ export default function MapScreen({ navigation }: any) {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [selectedLootBox, setSelectedLootBox] = useState<LootBox | null>(null);
   const [mapRegion, setMapRegion] = useState<any>(null);
+  const [mapVariant, setMapVariant] = useState<"native" | "simple">(Platform.OS === "web" ? "simple" : "native");
+  const [nativeMapComponents, setNativeMapComponents] = useState<{
+    MapView: any;
+    Marker: any;
+    PROVIDER_DEFAULT: any;
+  } | null>(null);
 
   const categories: LocationCategory[] = ["restaurant", "retail", "entertainment", "services"];
 
   const filteredLootBoxes = selectedCategory
     ? mockLootBoxes.filter((box) => box.category === selectedCategory)
     : mockLootBoxes;
+
+  // Dynamically load react-native-maps on native platforms
+  useEffect(() => {
+    if (Platform.OS !== "web") {
+      const loadNativeMap = async () => {
+        try {
+          const maps = await import("react-native-maps");
+          setNativeMapComponents({
+            MapView: maps.default,
+            Marker: maps.Marker,
+            PROVIDER_DEFAULT: maps.PROVIDER_DEFAULT,
+          });
+        } catch (error) {
+          console.warn("react-native-maps not available, falling back to SimpleMapView", error);
+          setMapVariant("simple");
+        }
+      };
+      loadNativeMap();
+    }
+  }, []);
 
   const sortedLootBoxes = userLocation
     ? [...filteredLootBoxes].sort((a, b) => {
@@ -229,7 +240,7 @@ export default function MapScreen({ navigation }: any) {
       </ScrollView>
 
       <View style={styles.mapContainer}>
-        {Platform.OS === "web" ? (
+        {mapVariant === "simple" || !nativeMapComponents ? (
           <SimpleMapView
             lootBoxes={filteredLootBoxes}
             userLocation={userLocation}
@@ -238,11 +249,11 @@ export default function MapScreen({ navigation }: any) {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             }}
           />
-        ) : mapRegion && MapView ? (
-          <MapView
+        ) : mapRegion ? (
+          <nativeMapComponents.MapView
             ref={mapRef}
             style={styles.map}
-            provider={PROVIDER_DEFAULT}
+            provider={nativeMapComponents.PROVIDER_DEFAULT}
             initialRegion={mapRegion}
             showsUserLocation={true}
             showsMyLocationButton={false}
@@ -250,7 +261,7 @@ export default function MapScreen({ navigation }: any) {
             showsScale={true}
           >
             {filteredLootBoxes.map((lootBox) => (
-              <Marker
+              <nativeMapComponents.Marker
                 key={lootBox.id}
                 coordinate={{
                   latitude: lootBox.latitude,
@@ -272,16 +283,16 @@ export default function MapScreen({ navigation }: any) {
                     color={lootBox.isActive ? "#FFFFFF" : theme.textSecondary} 
                   />
                 </View>
-              </Marker>
+              </nativeMapComponents.Marker>
             ))}
-          </MapView>
+          </nativeMapComponents.MapView>
         ) : (
           <View style={[styles.loadingContainer, { backgroundColor: theme.backgroundSecondary }]}>
             <ThemedText>Loading map...</ThemedText>
           </View>
         )}
 
-        {userLocation && Platform.OS !== "web" && (
+        {userLocation && mapVariant === "native" && nativeMapComponents && (
           <Pressable
             style={[styles.recenterButton, { backgroundColor: theme.primary }]}
             onPress={handleRecenterMap}
