@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Linking, Platform, Alert } from "react-native";
-import MapView, { Marker, PROVIDER_DEFAULT, Region } from "react-native-maps";
+import { View, StyleSheet, ScrollView, Pressable, Linking, Platform } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -10,6 +9,7 @@ import { CategoryChip } from "../components/CategoryChip";
 import { CountdownTimer } from "../components/CountdownTimer";
 import { BusinessLogo } from "../components/BusinessLogo";
 import { Button } from "../components/Button";
+import { SimpleMapView } from "../components/SimpleMapView";
 import { useTheme } from "../hooks/useTheme";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Spacing, BorderRadius } from "../constants/theme";
@@ -17,6 +17,21 @@ import { mockLootBoxes } from "../services/mockData";
 import { LocationService } from "../services/locationService";
 import { StorageService } from "../services/storageService";
 import { LocationCategory, LootBox, UserLocation } from "../types";
+
+let MapView: any = null;
+let Marker: any = null;
+let PROVIDER_DEFAULT: any = null;
+
+if (Platform.OS !== "web") {
+  try {
+    const maps = require("react-native-maps");
+    MapView = maps.default;
+    Marker = maps.Marker;
+    PROVIDER_DEFAULT = maps.PROVIDER_DEFAULT;
+  } catch (e) {
+    console.log("react-native-maps not available");
+  }
+}
 
 function DistanceBadge({ distance, theme }: { distance: number; theme: any }) {
   return (
@@ -57,12 +72,12 @@ export default function MapScreen({ navigation }: any) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<LocationCategory | null>(null);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [selectedLootBox, setSelectedLootBox] = useState<LootBox | null>(null);
-  const [mapRegion, setMapRegion] = useState<Region | null>(null);
+  const [mapRegion, setMapRegion] = useState<any>(null);
 
   const categories: LocationCategory[] = ["restaurant", "retail", "entertainment", "services"];
 
@@ -214,7 +229,16 @@ export default function MapScreen({ navigation }: any) {
       </ScrollView>
 
       <View style={styles.mapContainer}>
-        {mapRegion ? (
+        {Platform.OS === "web" ? (
+          <SimpleMapView
+            lootBoxes={filteredLootBoxes}
+            userLocation={userLocation}
+            onLootBoxPress={(lootBox) => {
+              setSelectedLootBox(lootBox);
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }}
+          />
+        ) : mapRegion && MapView ? (
           <MapView
             ref={mapRef}
             style={styles.map}
@@ -257,7 +281,7 @@ export default function MapScreen({ navigation }: any) {
           </View>
         )}
 
-        {userLocation && (
+        {userLocation && Platform.OS !== "web" && (
           <Pressable
             style={[styles.recenterButton, { backgroundColor: theme.primary }]}
             onPress={handleRecenterMap}
