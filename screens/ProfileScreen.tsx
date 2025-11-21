@@ -1,194 +1,269 @@
-import { useState } from "react";
-import { StyleSheet, View, TextInput } from "react-native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import React from "react";
+import { View, StyleSheet, Pressable, Image, Alert } from "react-native";
+import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { ScreenScrollView } from "../components/ScreenScrollView";
+import { ThemedText } from "../components/ThemedText";
+import { Button } from "../components/Button";
+import { useTheme } from "../hooks/useTheme";
+import { Spacing, BorderRadius, Layout } from "../constants/theme";
 
-import { ScreenKeyboardAwareScrollView } from "@/components/ScreenKeyboardAwareScrollView";
-import { ThemedText } from "@/components/ThemedText";
-import { Button } from "@/components/Button";
-import { useTheme } from "@/hooks/useTheme";
-import { Spacing, BorderRadius, Typography } from "@/constants/theme";
-import Spacer from "@/components/Spacer";
-import type { ProfileStackParamList } from "@/navigation/ProfileStackNavigator";
+export default function ProfileScreen() {
+  const { theme } = useTheme();
 
-type ProfileScreenProps = {
-  navigation: NativeStackNavigationProp<ProfileStackParamList, "Profile">;
-};
-
-export default function ProfileScreen({ navigation }: ProfileScreenProps) {
-  const { theme, isDark } = useTheme();
-
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  const handleSubmit = () => {
-    console.log("Form submitted:", { name, email, password });
+  const handleScheduleDrop = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(
+      "Schedule Loot Drop",
+      "This feature allows merchants to schedule loot drops at their business location.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Continue",
+          onPress: () =>
+            Alert.alert("Success", "Loot drop scheduled successfully!"),
+        },
+      ]
+    );
   };
 
-  const inputStyle = [
-    styles.input,
-    {
-      backgroundColor: theme.backgroundDefault,
-      color: theme.text,
-    },
-  ];
+  const handleSignOut = () => {
+    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Sign Out",
+        style: "destructive",
+        onPress: () => Alert.alert("Signed Out", "You have been signed out."),
+      },
+    ]);
+  };
 
   return (
-    <ScreenKeyboardAwareScrollView>
-      <View style={styles.section}>
-        <ThemedText type="h1">Heading 1</ThemedText>
-        <ThemedText type="small" style={styles.meta}>
-          32px • Bold
-        </ThemedText>
-      </View>
-
-      <View style={styles.section}>
-        <ThemedText type="h2">Heading 2</ThemedText>
-        <ThemedText type="small" style={styles.meta}>
-          28px • Bold
-        </ThemedText>
-      </View>
-
-      <View style={styles.section}>
-        <ThemedText type="h3">Heading 3</ThemedText>
-        <ThemedText type="small" style={styles.meta}>
-          24px • Semi-Bold
-        </ThemedText>
-      </View>
-
-      <View style={styles.section}>
-        <ThemedText type="h4">Heading 4</ThemedText>
-        <ThemedText type="small" style={styles.meta}>
-          20px • Semi-Bold
-        </ThemedText>
-      </View>
-
-      <View style={styles.section}>
-        <ThemedText type="body">
-          Body text - This is the default text style for paragraphs and general
-          content.
-        </ThemedText>
-        <ThemedText type="small" style={styles.meta}>
-          16px • Regular
-        </ThemedText>
-      </View>
-
-      <View style={styles.section}>
-        <ThemedText type="small">
-          Small text - Used for captions, labels, and secondary information.
-        </ThemedText>
-        <ThemedText type="small" style={styles.meta}>
-          14px • Regular
-        </ThemedText>
-      </View>
-
-      <View style={styles.section}>
-        <ThemedText type="link">Link text - Interactive elements</ThemedText>
-        <ThemedText type="small" style={styles.meta}>
-          16px • Regular • Colored
-        </ThemedText>
-      </View>
-
-      <Spacer height={Spacing["4xl"]} />
-
-      <View style={styles.fieldContainer}>
-        <ThemedText type="small" style={styles.label}>
-          Name
-        </ThemedText>
-        <TextInput
-          style={inputStyle}
-          value={name}
-          onChangeText={setName}
-          placeholder="Enter your name"
-          placeholderTextColor={isDark ? "#9BA1A6" : "#687076"}
-          autoCapitalize="words"
-          returnKeyType="next"
+    <ScreenScrollView>
+      <View style={styles.avatarSection}>
+        <Image
+          source={require("../assets/avatars/gold_chest_avatar.png")}
+          style={styles.avatar}
         />
-      </View>
-
-      <Spacer height={Spacing.lg} />
-
-      <View style={styles.fieldContainer}>
-        <ThemedText type="small" style={styles.label}>
-          Email
+        <ThemedText type="h2" style={styles.username}>
+          Treasure Hunter
         </ThemedText>
-        <TextInput
-          style={inputStyle}
-          value={email}
-          onChangeText={setEmail}
-          placeholder="your.email@example.com"
-          placeholderTextColor={isDark ? "#9BA1A6" : "#687076"}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          returnKeyType="next"
-        />
-      </View>
-
-      <Spacer height={Spacing.lg} />
-
-      <View style={styles.fieldContainer}>
-        <ThemedText type="small" style={styles.label}>
-          Password
+        <ThemedText
+          style={[styles.subtitle, { color: theme.textSecondary }]}
+        >
+          Gold Tier Member
         </ThemedText>
-        <TextInput
-          style={inputStyle}
-          value={password}
-          onChangeText={setPassword}
-          placeholder="Enter a password"
-          placeholderTextColor={isDark ? "#9BA1A6" : "#687076"}
-          secureTextEntry
-          autoCapitalize="none"
-          returnKeyType="next"
-        />
       </View>
 
-      <Spacer height={Spacing.lg} />
-
-      <Button onPress={handleSubmit}>Submit Form</Button>
-
-      <Spacer height={Spacing["2xl"]} />
-
-      <ThemedText type="h3" style={styles.sectionTitle}>
-        Testing
-      </ThemedText>
-      <Spacer height={Spacing.md} />
-      <Button
-        onPress={() => navigation.navigate("Crash")}
-        style={styles.crashButton}
+      <View
+        style={[
+          styles.statsCard,
+          {
+            backgroundColor: theme.backgroundDefault,
+            borderColor: theme.border,
+          },
+        ]}
       >
-        Crash App
+        <View style={styles.statRow}>
+          <View style={styles.statItem}>
+            <Feather name="award" size={24} color={theme.secondary} />
+            <ThemedText type="h3" style={styles.statValue}>
+              12
+            </ThemedText>
+            <ThemedText
+              style={[styles.statLabel, { color: theme.textSecondary }]}
+            >
+              Coupons
+            </ThemedText>
+          </View>
+          <View style={styles.statItem}>
+            <Feather name="dollar-sign" size={24} color={theme.success} />
+            <ThemedText type="h3" style={styles.statValue}>
+              $247
+            </ThemedText>
+            <ThemedText
+              style={[styles.statLabel, { color: theme.textSecondary }]}
+            >
+              Saved
+            </ThemedText>
+          </View>
+          <View style={styles.statItem}>
+            <Feather name="map-pin" size={24} color={theme.accent} />
+            <ThemedText type="h3" style={styles.statValue}>
+              8
+            </ThemedText>
+            <ThemedText
+              style={[styles.statLabel, { color: theme.textSecondary }]}
+            >
+              Visits
+            </ThemedText>
+          </View>
+        </View>
+      </View>
+
+      <View
+        style={[
+          styles.merchantCard,
+          {
+            backgroundColor: theme.backgroundDefault,
+            borderColor: theme.primary,
+          },
+        ]}
+      >
+        <View style={styles.merchantHeader}>
+          <Feather name="briefcase" size={24} color={theme.primary} />
+          <ThemedText type="h3" style={styles.merchantTitle}>
+            Merchant Tools
+          </ThemedText>
+        </View>
+        <ThemedText
+          style={[styles.merchantSubtext, { color: theme.textSecondary }]}
+        >
+          Schedule loot drops at your business location to attract customers
+        </ThemedText>
+        <Button onPress={handleScheduleDrop} style={styles.merchantButton}>
+          Schedule Loot Drop
+        </Button>
+      </View>
+
+      <View style={styles.menuSection}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.menuItem,
+            {
+              backgroundColor: theme.backgroundDefault,
+              opacity: pressed ? 0.7 : 1,
+            },
+          ]}
+          onPress={() => Alert.alert("Settings", "Settings screen")}
+        >
+          <Feather name="settings" size={20} color={theme.text} />
+          <ThemedText style={styles.menuText}>Settings</ThemedText>
+          <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.menuItem,
+            {
+              backgroundColor: theme.backgroundDefault,
+              opacity: pressed ? 0.7 : 1,
+            },
+          ]}
+          onPress={() =>
+            Alert.alert(
+              "Help",
+              "For support, please contact support@lootdropar.com"
+            )
+          }
+        >
+          <Feather name="help-circle" size={20} color={theme.text} />
+          <ThemedText style={styles.menuText}>Help & Support</ThemedText>
+          <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [
+            styles.menuItem,
+            {
+              backgroundColor: theme.backgroundDefault,
+              opacity: pressed ? 0.7 : 1,
+            },
+          ]}
+          onPress={() => Alert.alert("About", "LootDrop AR v1.0.0")}
+        >
+          <Feather name="info" size={20} color={theme.text} />
+          <ThemedText style={styles.menuText}>About</ThemedText>
+          <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+        </Pressable>
+      </View>
+
+      <Button
+        onPress={handleSignOut}
+        style={[styles.signOutButton, { backgroundColor: theme.error }]}
+      >
+        Sign Out
       </Button>
-    </ScreenKeyboardAwareScrollView>
+    </ScreenScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  section: {
+  avatarSection: {
+    alignItems: "center",
     marginBottom: Spacing["3xl"],
   },
-  meta: {
-    opacity: 0.5,
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: Spacing.lg,
+  },
+  username: {
+    marginBottom: Spacing.xs,
+  },
+  subtitle: {
+    fontSize: 14,
+  },
+  statsCard: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    marginBottom: Spacing["2xl"],
+  },
+  statRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+  },
+  statItem: {
+    alignItems: "center",
+    gap: Spacing.xs,
+  },
+  statValue: {
+    marginTop: Spacing.xs,
+  },
+  statLabel: {
+    fontSize: 12,
+  },
+  merchantCard: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 2,
+    marginBottom: Spacing["2xl"],
+  },
+  merchantHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: Spacing.sm,
+    gap: Spacing.sm,
+  },
+  merchantTitle: {
+    flex: 1,
+  },
+  merchantSubtext: {
+    fontSize: 14,
+    marginBottom: Spacing.lg,
+    lineHeight: 20,
+  },
+  merchantButton: {
     marginTop: Spacing.sm,
   },
-  fieldContainer: {
-    width: "100%",
+  menuSection: {
+    marginBottom: Spacing["2xl"],
+    gap: Spacing.sm,
   },
-  label: {
-    marginBottom: Spacing.sm,
-    fontWeight: "600",
-    opacity: 0.8,
-  },
-  input: {
-    height: Spacing.inputHeight,
-    borderWidth: 0,
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.lg,
     borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.lg,
-    fontSize: Typography.body.fontSize,
+    gap: Spacing.md,
   },
-  sectionTitle: {
-    marginTop: Spacing.xl,
+  menuText: {
+    flex: 1,
+    fontSize: 16,
   },
-  crashButton: {
-    backgroundColor: "#FF3B30",
+  signOutButton: {
+    marginTop: Spacing.lg,
   },
 });

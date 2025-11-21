@@ -1,23 +1,34 @@
 {
   "expo": {
-    "name": "my-app",
-    "slug": "my-app",
+    "name": "LootDrop AR",
+    "slug": "lootdrop-ar",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
-    "userInterfaceStyle": "automatic",
+    "scheme": "lootdropar",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lootdrop.ar",
+      "infoPlist": {
+        "NSCameraUsageDescription": "LootDrop AR needs camera access to show AR loot boxes in the real world.",
+        "NSLocationWhenInUseUsageDescription": "LootDrop AR needs your location to show nearby loot drops and rewards."
+      }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FF6B35",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "package": "com.lootdrop.ar",
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
@@ -32,9 +43,9 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#0F1419",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#0F1419"
           }
         }
       ],
