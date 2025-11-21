@@ -2,20 +2,13 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, ScrollView, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withSequence,
-  withTiming,
-  Easing,
-} from "react-native-reanimated";
 import { ThemedText } from "../components/ThemedText";
 import { ThemedView } from "../components/ThemedView";
 import { CategoryChip } from "../components/CategoryChip";
 import { CountdownTimer } from "../components/CountdownTimer";
 import { FAB } from "../components/FAB";
 import { BusinessLogo } from "../components/BusinessLogo";
+import { SimpleMapView } from "../components/SimpleMapView";
 import { useTheme } from "../hooks/useTheme";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Spacing, BorderRadius } from "../constants/theme";
@@ -66,6 +59,7 @@ export default function MapScreen({ navigation }: any) {
   const [selectedCategory, setSelectedCategory] = useState<LocationCategory | null>(null);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [selectedLootBox, setSelectedLootBox] = useState<LootBox | null>(null);
 
   const categories: LocationCategory[] = ["restaurant", "retail", "entertainment", "services"];
 
@@ -152,11 +146,63 @@ export default function MapScreen({ navigation }: any) {
         ))}
       </ScrollView>
 
+      <View style={[styles.mapWrapper, { backgroundColor: theme.backgroundRoot }]}>
+        <SimpleMapView
+          lootBoxes={filteredLootBoxes}
+          userLocation={userLocation}
+          onLootBoxPress={(lootBox) => {
+            const index = sortedLootBoxes.findIndex(box => box.id === lootBox.id);
+            if (index !== -1) {
+              setSelectedLootBox(lootBox);
+            }
+          }}
+        />
+      </View>
+
+      {selectedLootBox && (
+        <View
+          style={[
+            styles.selectedCard,
+            {
+              backgroundColor: theme.backgroundDefault,
+              borderColor: theme.primary,
+            },
+          ]}
+        >
+          <View style={styles.cardHeader}>
+            <View style={styles.businessInfo}>
+              <BusinessLogo
+                businessName={selectedLootBox.businessName}
+                logoUrl={selectedLootBox.businessLogo}
+                size={40}
+              />
+              <View style={styles.businessText}>
+                <ThemedText type="h4" numberOfLines={1}>
+                  {selectedLootBox.businessName}
+                </ThemedText>
+                <ThemedText
+                  style={[styles.couponTitle, { color: theme.textSecondary }]}
+                  numberOfLines={1}
+                >
+                  {selectedLootBox.coupon.title}
+                </ThemedText>
+              </View>
+            </View>
+            <Pressable onPress={() => setSelectedLootBox(null)}>
+              <Feather name="x" size={24} color={theme.text} />
+            </Pressable>
+          </View>
+          {selectedLootBox.isActive && (
+            <CountdownTimer targetTime={selectedLootBox.dropTime} style={styles.selectedTimer} />
+          )}
+        </View>
+      )}
+
       <ScrollView
         style={styles.listContainer}
         contentContainerStyle={[
           styles.listContent,
-          { paddingBottom: tabBarHeight + Spacing.xxl * 2 },
+          { paddingBottom: tabBarHeight + Spacing["2xl"] * 2 },
         ]}
       >
         {sortedLootBoxes.map((lootBox) => {
@@ -273,6 +319,21 @@ const styles = StyleSheet.create({
   categoryContainer: {
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.md,
+  },
+  mapWrapper: {
+    paddingVertical: Spacing.lg,
+    alignItems: "center",
+  },
+  selectedCard: {
+    marginHorizontal: Spacing.lg,
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    borderWidth: 2,
+    marginBottom: Spacing.md,
+  },
+  selectedTimer: {
+    marginTop: Spacing.md,
+    alignSelf: "flex-start",
   },
   listContainer: {
     flex: 1,
