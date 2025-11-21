@@ -1,9 +1,20 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CollectedCoupon, LootBox } from "../types";
+import { LogoService } from "./logoService";
 
 const COLLECTED_COUPONS_KEY = "@lootdrop_collected_coupons";
 const FAVORITE_LOCATIONS_KEY = "@lootdrop_favorites";
 const ONBOARDING_KEY = "@lootdrop_onboarding_completed";
+
+function ensureCouponHasLogo(coupon: CollectedCoupon): CollectedCoupon {
+  if (!coupon.businessLogo && coupon.businessName) {
+    return {
+      ...coupon,
+      businessLogo: LogoService.getBusinessLogo(coupon.businessName),
+    };
+  }
+  return coupon;
+}
 
 export class StorageService {
   static async getCollectedCoupons(): Promise<CollectedCoupon[]> {
@@ -18,13 +29,14 @@ export class StorageService {
 
   static async addCollectedCoupon(coupon: CollectedCoupon): Promise<void> {
     try {
+      const enrichedCoupon = ensureCouponHasLogo(coupon);
       const coupons = await this.getCollectedCoupons();
-      const existingIndex = coupons.findIndex((c) => c.id === coupon.id);
+      const existingIndex = coupons.findIndex((c) => c.id === enrichedCoupon.id);
 
       if (existingIndex >= 0) {
-        coupons[existingIndex] = coupon;
+        coupons[existingIndex] = enrichedCoupon;
       } else {
-        coupons.push(coupon);
+        coupons.push(enrichedCoupon);
       }
 
       await AsyncStorage.setItem(COLLECTED_COUPONS_KEY, JSON.stringify(coupons));
