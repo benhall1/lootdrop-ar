@@ -1,31 +1,13 @@
-import { Platform } from "react-native";
+import * as Location from "expo-location";
 import { UserLocation } from "../types";
-
-let Location: any = null;
-
-if (Platform.OS !== "web") {
-  Location = require("expo-location");
-}
-
-const MOCK_LOCATION: UserLocation = {
-  latitude: 37.7849,
-  longitude: -122.4094,
-};
 
 export class LocationService {
   static async requestPermissions(): Promise<boolean> {
-    if (Platform.OS === "web") {
-      return true;
-    }
     const { status } = await Location.requestForegroundPermissionsAsync();
     return status === "granted";
   }
 
   static async getCurrentLocation(): Promise<UserLocation | null> {
-    if (Platform.OS === "web") {
-      return MOCK_LOCATION;
-    }
-    
     try {
       const hasPermission = await this.requestPermissions();
       if (!hasPermission) {
@@ -48,12 +30,7 @@ export class LocationService {
 
   static async watchLocation(
     callback: (location: UserLocation) => void
-  ): Promise<any | null> {
-    if (Platform.OS === "web") {
-      callback(MOCK_LOCATION);
-      return null;
-    }
-    
+  ): Promise<Location.LocationSubscription | null> {
     try {
       const hasPermission = await this.requestPermissions();
       if (!hasPermission) {

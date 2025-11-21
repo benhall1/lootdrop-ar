@@ -1,21 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { View, StyleSheet, Text, Platform } from "react-native";
+import { Camera, CameraView } from "expo-camera";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { ThemedText } from "./ThemedText";
 import { BusinessLogo } from "./BusinessLogo";
 import { useTheme } from "../hooks/useTheme";
 import { Spacing, BorderRadius } from "../constants/theme";
 import { LootBox } from "../types";
-
-let Camera: any = null;
-let CameraView: any = null;
-let Haptics: any = null;
-
-if (Platform.OS !== "web") {
-  Camera = require("expo-camera").Camera;
-  CameraView = require("expo-camera").CameraView;
-  Haptics = require("expo-haptics");
-}
 
 interface ARCameraProps {
   nearbyLootBoxes: LootBox[];
@@ -27,11 +19,6 @@ export function ARCamera({ nearbyLootBoxes, onLootBoxTap }: ARCameraProps) {
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (Platform.OS === "web") {
-      setHasPermission(false);
-      return;
-    }
-    
     (async () => {
       const { status } = await Camera.requestCameraPermissionsAsync();
       setHasPermission(status === "granted");
@@ -40,14 +27,10 @@ export function ARCamera({ nearbyLootBoxes, onLootBoxTap }: ARCameraProps) {
 
   const handleLootBoxTap = (lootBox: LootBox) => {
     if (lootBox.isActive) {
-      if (Platform.OS !== "web" && Haptics) {
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onLootBoxTap(lootBox);
     } else {
-      if (Platform.OS !== "web" && Haptics) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   };
 
@@ -60,21 +43,14 @@ export function ARCamera({ nearbyLootBoxes, onLootBoxTap }: ARCameraProps) {
   }
 
   if (hasPermission === false) {
-    const message = Platform.OS === "web" 
-      ? "AR Camera requires a mobile device"
-      : "Camera permission denied";
-    const submessage = Platform.OS === "web"
-      ? "Scan the QR code with Expo Go on your phone to use AR features"
-      : "Enable camera access in Settings to use AR features";
-      
     return (
       <View style={styles.container}>
         <Feather name="camera-off" size={64} color={theme.textSecondary} />
         <ThemedText style={[styles.noPermissionText, { color: theme.textSecondary }]}>
-          {message}
+          Camera permission denied
         </ThemedText>
         <ThemedText style={[styles.noPermissionSubtext, { color: theme.textSecondary }]}>
-          {submessage}
+          Enable camera access in Settings to use AR features
         </ThemedText>
       </View>
     );
