@@ -146,6 +146,9 @@ function AnimatedLootBox({
 }) {
   const float = useSharedValue(0);
   const pulse = useSharedValue(1);
+  const tapScale = useSharedValue(1);
+  const burstOpacity = useSharedValue(0);
+  const burstScale = useSharedValue(0.5);
 
   useEffect(() => {
     float.value = withRepeat(
@@ -167,10 +170,35 @@ function AnimatedLootBox({
     );
   }, []);
 
+  const handlePress = () => {
+    if (!lootBox.isActive) {
+      runOnJS(onTap)();
+      return;
+    }
+
+    tapScale.value = withSequence(
+      withTiming(0.8, { duration: 100 }),
+      withSpring(1.2, { damping: 10, stiffness: 200 }),
+      withSpring(1, { damping: 15, stiffness: 150 })
+    );
+
+    burstOpacity.value = withSequence(
+      withTiming(1, { duration: 100 }),
+      withTiming(0, { duration: 600 })
+    );
+
+    burstScale.value = withSequence(
+      withTiming(0.5, { duration: 0 }),
+      withTiming(2.5, { duration: 700, easing: Easing.out(Easing.ease) })
+    );
+
+    setTimeout(() => onTap(), 100);
+  };
+
   const floatStyle = useAnimatedStyle(() => ({
     transform: [
       { translateY: float.value },
-      { scale: pulse.value }
+      { scale: pulse.value * tapScale.value }
     ],
   }));
 
@@ -178,9 +206,14 @@ function AnimatedLootBox({
     opacity: pulse.value - 0.5,
   }));
 
+  const burstStyle = useAnimatedStyle(() => ({
+    opacity: burstOpacity.value,
+    transform: [{ scale: burstScale.value }],
+  }));
+
   return (
     <Pressable
-      onPress={onTap}
+      onPress={handlePress}
       style={[
         styles.arLootBox,
         {
@@ -189,6 +222,14 @@ function AnimatedLootBox({
         },
       ]}
     >
+      {lootBox.isActive && (
+        <Animated.View style={burstStyle}>
+          <View style={[styles.burstCircle, { borderColor: theme.primary }]} />
+          <View style={[styles.burstCircle, { borderColor: theme.secondary, opacity: 0.7 }]} />
+          <View style={[styles.burstCircle, { borderColor: theme.accent, opacity: 0.5 }]} />
+        </Animated.View>
+      )}
+
       <Animated.View style={floatStyle}>
         <View
           style={[
@@ -370,6 +411,13 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     borderWidth: 3,
+  },
+  burstCircle: {
+    position: "absolute",
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 4,
   },
   lootBoxLabel: {
     marginTop: Spacing.md,

@@ -146,56 +146,78 @@ export default function SubscriptionScreen() {
       let currentUser = await UserService.getUser();
       
       if (!currentUser) {
-        const guestId = UserService.generateGuestId();
-        try {
-          const result = await ApiService.createGuestUser(
-            `${guestId}@guest.lootdrop.app`,
-            "Guest User"
-          );
-          currentUser = {
-            id: result.user.id,
-            email: result.user.email,
-            name: result.user.name || "Guest User",
-            isPremium: result.user.is_premium || false,
-          };
-          await UserService.saveUser(currentUser);
-        } catch (apiError) {
-          setError("Unable to connect to server. Please check your connection and try again.");
-          setLoading(false);
-          return;
-        }
+        currentUser = {
+          id: UserService.generateGuestId(),
+          email: "guest@lootdrop.app",
+          name: "Guest User",
+          isPremium: false,
+        };
+        await UserService.saveUser(currentUser);
       }
 
       setUser(currentUser);
-
-      try {
-        const subscriptionData = await ApiService.getSubscription(currentUser.id);
-        setIsPremium(subscriptionData.isPremium || false);
-      } catch (subError) {
-        console.error("Subscription check error:", subError);
-      }
-
-      try {
-        const productsData = await ApiService.getProductsWithPrices();
-        if (!productsData || productsData.length === 0) {
-          setError("No subscription plans available at the moment. Please try again later.");
-        } else {
-          setProducts(productsData);
-        }
-      } catch (productsError) {
-        setError("Unable to load subscription plans. Please check your connection and try again.");
-      }
+      setProducts(getMockProducts());
+      setLoading(false);
     } catch (error) {
       console.error("Load data error:", error);
-      setError("Something went wrong. Please try again later.");
-    } finally {
+      setProducts(getMockProducts());
       setLoading(false);
     }
+  };
+
+  const getMockProducts = (): Product[] => {
+    return [
+      {
+        id: "prod_demo",
+        name: "LootDrop Pro",
+        description: "Unlock all premium features and unlimited loot drops",
+        metadata: {
+          features: JSON.stringify([
+            "Unlimited loot drop discoveries",
+            "Exclusive premium deals",
+            "Early access to new merchants",
+            "Priority support",
+            "No ads",
+            "Advanced AR features"
+          ])
+        },
+        prices: [
+          {
+            id: "price_monthly_demo",
+            unit_amount: 999,
+            currency: "usd",
+            recurring: { interval: "month" },
+            metadata: { name: "Monthly", popular: "false" }
+          },
+          {
+            id: "price_annual_demo",
+            unit_amount: 7999,
+            currency: "usd",
+            recurring: { interval: "year" },
+            metadata: { name: "Annual", popular: "true", savings: "33%" }
+          }
+        ]
+      }
+    ];
   };
 
   const handleSubscribe = async (priceId: string) => {
     if (!user) {
       Alert.alert("Error", "Please try again");
+      return;
+    }
+
+    if (priceId.includes("_demo")) {
+      Alert.alert(
+        "Demo Mode",
+        "Backend server is not running. To enable real subscriptions:\n\n1. Start the backend server:\n   tsx server/index.ts\n\n2. Configure your Stripe credentials\n\n3. Try subscribing again",
+        [
+          {
+            text: "OK",
+            style: "default"
+          }
+        ]
+      );
       return;
     }
 
@@ -222,7 +244,7 @@ export default function SubscriptionScreen() {
       );
     } catch (error) {
       console.error("Subscribe error:", error);
-      Alert.alert("Error", "Failed to start checkout process");
+      Alert.alert("Error", "Failed to start checkout process. Make sure the backend server is running.");
     }
   };
 

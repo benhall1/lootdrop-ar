@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, Pressable, Image, Alert } from "react-native";
+import { View, StyleSheet, Pressable, Image, Alert, Modal } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { ScreenScrollView } from "../components/ScreenScrollView";
@@ -9,10 +9,12 @@ import { useTheme } from "../hooks/useTheme";
 import { Spacing, BorderRadius, Layout } from "../constants/theme";
 import { AuthService, User } from "../services/authService";
 import { StorageService } from "../services/storageService";
+import ChatScreen from "./ChatScreen";
 
 export default function ProfileScreen() {
   const { theme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
+  const [showChatModal, setShowChatModal] = useState(false);
   const [stats, setStats] = useState({
     coupons: 0,
     savings: 0,
@@ -189,12 +191,10 @@ export default function ProfileScreen() {
               opacity: pressed ? 0.7 : 1,
             },
           ]}
-          onPress={() =>
-            Alert.alert(
-              "Help",
-              "For support, please contact support@lootdropar.com"
-            )
-          }
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            setShowChatModal(true);
+          }}
         >
           <Feather name="help-circle" size={20} color={theme.text} />
           <ThemedText style={styles.menuText}>Help & Support</ThemedText>
@@ -223,6 +223,29 @@ export default function ProfileScreen() {
       >
         Sign Out
       </Button>
+
+      <Modal
+        visible={showChatModal}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowChatModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
+          <View style={[styles.modalHeader, { backgroundColor: theme.backgroundDefault, borderBottomColor: theme.border }]}>
+            <ThemedText type="h3">Help & Support</ThemedText>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowChatModal(false);
+              }}
+              style={styles.closeButton}
+            >
+              <Feather name="x" size={24} color={theme.text} />
+            </Pressable>
+          </View>
+          <ChatScreen />
+        </View>
+      </Modal>
     </ScreenScrollView>
   );
 }
@@ -304,5 +327,16 @@ const styles = StyleSheet.create({
   },
   signOutButton: {
     marginTop: Spacing.lg,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.lg,
+    borderBottomWidth: 1,
+  },
+  closeButton: {
+    padding: Spacing.sm,
   },
 });
