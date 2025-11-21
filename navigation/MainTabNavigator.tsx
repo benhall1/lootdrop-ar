@@ -7,12 +7,14 @@ import DiscoverScreen from "@/screens/DiscoverScreen";
 import MapScreen from "@/screens/MapScreen";
 import CollectionScreen from "@/screens/CollectionScreen";
 import ProfileScreen from "@/screens/ProfileScreen";
+import SubscriptionScreen from "@/screens/SubscriptionScreen";
 import { useTheme } from "@/hooks/useTheme";
 
 export type MainTabParamList = {
   Discover: undefined;
   Map: undefined;
   Collection: undefined;
+  Premium: undefined;
   Profile: undefined;
 };
 
@@ -72,8 +74,18 @@ export default function MainTabNavigator() {
         component={CollectionScreen}
         options={{
           title: "Collection",
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({ color, size}) => (
             <Feather name="award" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Premium"
+        component={SubscriptionScreen}
+        options={{
+          title: "Premium",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="star" size={size} color={color} />
           ),
         }}
       />
