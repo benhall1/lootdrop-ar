@@ -28,10 +28,10 @@ LootDrop AR is a cross-platform mobile AR application that combines location-bas
 
 ### Key Features Implemented
 1. **Discover Screen**: AR camera view with loot discovery, distance tracking, minimap
-2. **Map Screen**: Location browser with category filters and countdown timers
+2. **Map Screen**: Interactive live map with real GPS, loot markers, and turn-by-turn directions
 3. **Collection Screen**: Coupon management with statistics dashboard
 4. **Premium Screen**: Subscription management with pricing tiers and Stripe checkout
-5. **Profile Screen**: User profile, merchant tools, settings
+5. **Profile Screen**: User profile, merchant tools, Help & Support chatbot modal
 
 ### Subscription Features
 - **Pricing Tiers**: Monthly ($9.99) and Annual ($79.99 with 33% savings)
@@ -70,6 +70,23 @@ LootDrop AR is a cross-platform mobile AR application that combines location-bas
 - FAB: Floating action buttons for view switching
 
 ## Recent Changes
+
+### 2024-11-21: Live Map with GPS & Directions
+- ✅ Integrated react-native-maps for interactive map view
+- ✅ Added real GPS location tracking with expo-location
+- ✅ Replaced list-based map with actual MapView component
+- ✅ Added loot box markers with custom styling (active vs. expired)
+- ✅ Implemented tap-to-select marker functionality
+- ✅ Created "Get Directions" feature (opens Apple Maps/Google Maps)
+- ✅ Added recenter button to return to user's location
+- ✅ Integrated real-time distance calculation from user position
+- ✅ Shows live location with blue navigation marker
+
+### 2024-11-21: UI/UX Enhancements
+- ✅ Added Help & Support chatbot modal in Profile screen
+- ✅ Implemented loot box tap animations (burst effect for active boxes)
+- ✅ Made Premium tab work offline with demo pricing
+- ✅ Maintained 5-tab navigation structure
 
 ### 2024-11-21: Subscription Feature & Backend
 - ✅ Built Premium subscription screen with pricing tiers
@@ -113,15 +130,10 @@ LootDrop AR is a cross-platform mobile AR application that combines location-bas
 ## Architecture Decisions
 
 ### MVP Design Decisions
-- **Simulated Location**: Using fixed San Francisco coordinates (production will use expo-location)
-- **List-Based Map**: FlatList with location cards (production will use react-native-maps)
-- **In-Memory Storage**: No persistence in prototype (production will use AsyncStorage + backend)
-- **Mock Data**: 6 pre-configured loot boxes across 4 categories
-
-### Rationale
-- Focus on UI/UX polish and functionality demonstration
-- Enable rapid iteration without external dependencies
-- Prepare architecture for seamless backend integration
+- **Real GPS Location**: Using expo-location for live user tracking
+- **Interactive Map**: react-native-maps with custom markers and controls
+- **Turn-by-Turn Directions**: Native integration with Apple Maps and Google Maps
+- **Mock Data**: 6 pre-configured loot boxes across 4 categories (backend integration pending)
 
 ## Next Phase: Backend & Advanced Features
 
@@ -147,12 +159,11 @@ LootDrop AR is a cross-platform mobile AR application that combines location-bas
    - Merchant dashboard with analytics
    - User authentication (Apple/Google Sign-In)
 
-## Known Limitations (Prototype)
-- Camera is placeholder (no actual AR rendering)
-- Location is simulated (no real GPS tracking)
-- Maps show list view (not interactive map)
-- Data is not persisted (resets on app restart)
-- Coupons are mock data (not from real APIs)
+## Known Limitations (MVP)
+- Camera is placeholder (no actual AR rendering yet)
+- Data is not persisted to backend (mock data only)
+- Coupons are mock data (real API integration pending)
+- Backend server requires manual startup for subscription features
 
 ## Dependencies
 
@@ -164,8 +175,10 @@ LootDrop AR is a cross-platform mobile AR application that combines location-bas
 - expo-blur
 - expo-haptics
 - expo-image
+- expo-location
 - expo-status-bar
 - expo-web-browser
+- react-native-maps
 - react-native-safe-area-context
 - react-native-gesture-handler
 
