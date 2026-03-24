@@ -11,7 +11,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { ThemedText } from "./ThemedText";
 import { useTheme } from "../hooks/useTheme";
-import { Fonts, Spacing, BorderRadius } from "../constants/theme";
+import { Fonts, Spacing, BorderRadius, WebShadows } from "../constants/theme";
 import { LootBox, UserLocation } from "../types";
 import { calculateDistance } from "../services/geolocation";
 
@@ -209,12 +209,13 @@ export function RadarView({
         style={[
           radarStyles.radarCircle,
           {
-            backgroundColor: theme.backgroundDefault + "80",
-            borderColor: theme.primary + "30",
+            backgroundColor: theme.backgroundDefault + "60",
+            borderColor: theme.primary + "35",
             ...Platform.select({
               web: {
-                backdropFilter: "blur(20px)",
-                boxShadow: `0 0 60px ${theme.primaryGlow}, inset 0 0 60px ${theme.primaryGlow}`,
+                backdropFilter: "blur(24px)",
+                boxShadow: `0 0 80px ${theme.primaryGlow}, inset 0 0 80px ${theme.primaryGlow}, 0 0 2px ${theme.primary}40`,
+                background: `radial-gradient(circle, ${theme.backgroundDefault}90 0%, ${theme.backgroundDefault}40 100%)`,
               },
               default: {},
             }),
@@ -318,7 +319,10 @@ export function RadarView({
             {
               backgroundColor: theme.accent,
               ...Platform.select({
-                web: { boxShadow: `0 0 16px ${theme.accentGlow}` },
+                web: {
+                  boxShadow: `0 0 20px ${theme.accentGlow}, 0 0 6px ${theme.accent}`,
+                  animation: "lootdrop-pulse 2s ease-in-out infinite",
+                },
                 default: {},
               }),
             },

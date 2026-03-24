@@ -122,7 +122,10 @@ export function XPBar({ state, compact = false }: XPBarProps) {
               {
                 backgroundColor: theme.xpBar,
                 ...Platform.select({
-                  web: { boxShadow: `0 0 8px ${theme.xpBar}80` },
+                  web: {
+                    boxShadow: `0 0 12px ${theme.xpBar}90, 0 0 24px ${theme.xpBar}40`,
+                    background: `linear-gradient(90deg, ${theme.xpBar}, ${theme.xpBar}DD, ${theme.xpBar})`,
+                  },
                   default: {},
                 }),
               },

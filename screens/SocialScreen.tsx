@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, Pressable, Share, Platform } from "react-native";
+import { View, StyleSheet, Pressable, Share, Platform, ViewStyle } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -9,7 +9,7 @@ import { XPBar } from "../components/XPBar";
 import { Leaderboard } from "../components/Leaderboard";
 import { ActivityFeed } from "../components/ActivityFeed";
 import { useTheme } from "../hooks/useTheme";
-import { Spacing, BorderRadius, Fonts } from "../constants/theme";
+import { Spacing, BorderRadius, Fonts, WebShadows, Gradients } from "../constants/theme";
 import { GamificationService, GamificationState } from "../services/gamificationService";
 import { SoundService } from "../services/soundService";
 
@@ -82,10 +82,16 @@ export default function SocialScreen() {
               styles.tab,
               {
                 backgroundColor:
-                  activeTab === tab.key ? theme.primary + "15" : "transparent",
+                  activeTab === tab.key ? theme.primary + "18" : "transparent",
                 borderColor:
-                  activeTab === tab.key ? theme.primary + "40" : "transparent",
-              },
+                  activeTab === tab.key ? theme.primary + "40" : theme.border + "60",
+                ...Platform.select({
+                  web: activeTab === tab.key
+                    ? { boxShadow: `0 0 16px ${theme.primaryGlow}` }
+                    : {},
+                  default: {},
+                }),
+              } as ViewStyle,
             ]}
           >
             <Feather
@@ -135,7 +141,16 @@ export default function SocialScreen() {
                     borderColor: badge.unlockedAt
                       ? theme.secondary + "40"
                       : theme.border,
-                    opacity: badge.unlockedAt ? 1 : 0.5,
+                    opacity: badge.unlockedAt ? 1 : 0.4,
+                    ...Platform.select({
+                      web: badge.unlockedAt
+                        ? {
+                            background: `${Gradients.web.cardSheen}, ${theme.backgroundDefault}`,
+                            boxShadow: `0 0 20px ${theme.secondaryGlow}`,
+                          }
+                        : {},
+                      default: {},
+                    }),
                   },
                 ]}
               >

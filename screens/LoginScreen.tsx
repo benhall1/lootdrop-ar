@@ -18,7 +18,7 @@ import { ThemedText } from "../components/ThemedText";
 import { ThemedView } from "../components/ThemedView";
 import { Button } from "../components/Button";
 import { useTheme } from "../hooks/useTheme";
-import { Spacing, BorderRadius, Fonts, Shadows } from "../constants/theme";
+import { Spacing, BorderRadius, Fonts, Shadows, Gradients, WebShadows } from "../constants/theme";
 import { AuthService } from "../services/authService";
 
 interface LoginScreenProps {
@@ -161,14 +161,26 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
   return (
     <ThemedView style={styles.container}>
+      {/* Atmospheric gradient mesh background (web) */}
+      {Platform.OS === "web" && (
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              background: Gradients.web.heroMesh,
+            } as any,
+          ]}
+        />
+      )}
+
       {/* Ambient glow orbs */}
-      <GlowingOrb delay={0} size={200} color={theme.primaryGlow} style={{ top: "5%", left: "-15%" }} />
-      <GlowingOrb delay={1000} size={160} color={theme.secondaryGlow} style={{ top: "15%", right: "-10%" }} />
-      <GlowingOrb delay={2000} size={240} color={theme.accentGlow} style={{ bottom: "10%", left: "-20%" }} />
-      <GlowingOrb delay={500} size={120} color={theme.primaryGlow} style={{ bottom: "25%", right: "-8%" }} />
+      <GlowingOrb delay={0} size={220} color={theme.primaryGlow} style={{ top: "3%", left: "-18%" }} />
+      <GlowingOrb delay={1200} size={180} color={theme.secondaryGlow} style={{ top: "12%", right: "-12%" }} />
+      <GlowingOrb delay={2500} size={260} color={theme.accentGlow} style={{ bottom: "8%", left: "-22%" }} />
+      <GlowingOrb delay={600} size={140} color={theme.primaryGlow} style={{ bottom: "28%", right: "-10%" }} />
 
       <View style={styles.content}>
-        <Animated.View entering={FadeInDown.duration(800).delay(200)}>
+        <Animated.View entering={FadeInDown.duration(900).delay(200)}>
           <FloatingChest />
         </Animated.View>
 
@@ -179,7 +191,18 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
           >
             LootDrop
           </ThemedText>
-          <View style={[styles.tagBadge, { backgroundColor: theme.primary }]}>
+          <View
+            style={[
+              styles.tagBadge,
+              {
+                backgroundColor: theme.primary,
+                ...Platform.select({
+                  web: { boxShadow: WebShadows.neonOrange },
+                  default: {},
+                }),
+              },
+            ]}
+          >
             <ThemedText style={styles.tagText}>AR</ThemedText>
           </View>
         </Animated.View>
@@ -194,13 +217,26 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
         <Animated.View entering={FadeInUp.duration(600).delay(800)} style={styles.features}>
           {[
-            { icon: "crosshair", label: "Discover", color: theme.primary },
-            { icon: "map-pin", label: "Explore", color: theme.secondary },
-            { icon: "gift", label: "Collect", color: theme.accent },
+            { icon: "crosshair", label: "Discover", color: theme.primary, emoji: "🎯" },
+            { icon: "map-pin", label: "Explore", color: theme.secondary, emoji: "🗺️" },
+            { icon: "gift", label: "Collect", color: theme.accent, emoji: "🎁" },
           ].map((f, i) => (
             <View key={f.label} style={styles.feature}>
-              <View style={[styles.featureIcon, { backgroundColor: f.color + "20" }]}>
-                <Feather name={f.icon as any} size={22} color={f.color} />
+              <View
+                style={[
+                  styles.featureIcon,
+                  {
+                    backgroundColor: f.color + "18",
+                    borderWidth: 1,
+                    borderColor: f.color + "30",
+                    ...Platform.select({
+                      web: { boxShadow: `0 0 20px ${f.color}20` },
+                      default: {},
+                    }),
+                  },
+                ]}
+              >
+                <ThemedText style={{ fontSize: 22 }}>{f.emoji}</ThemedText>
               </View>
               <ThemedText style={[styles.featureText, { fontFamily: Fonts?.sans }]}>
                 {f.label}
@@ -302,13 +338,20 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             style={({ pressed }) => [
               styles.guestButton,
               {
-                borderColor: theme.border,
+                borderColor: theme.primary + "40",
                 opacity: pressed ? 0.7 : 1,
+                ...Platform.select({
+                  web: {
+                    boxShadow: `0 0 16px ${theme.primaryGlow}`,
+                    animation: "lootdrop-border-glow 3s ease-in-out infinite",
+                  },
+                  default: {},
+                }),
               },
             ]}
           >
-            <Feather name="zap" size={18} color={theme.textSecondary} />
-            <ThemedText style={[styles.guestText, { color: theme.textSecondary }]}>
+            <ThemedText style={{ fontSize: 16 }}>⚡</ThemedText>
+            <ThemedText style={[styles.guestText, { color: theme.primary }]}>
               Quick Play as Guest
             </ThemedText>
           </Pressable>
@@ -343,15 +386,15 @@ const styles = StyleSheet.create({
   },
   logoGlow: {
     position: "absolute",
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: "rgba(255, 109, 58, 0.15)",
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: "rgba(255, 109, 58, 0.12)",
   },
   logo: {
-    width: 110,
-    height: 110,
-    borderRadius: 32,
+    width: 120,
+    height: 120,
+    borderRadius: 36,
   },
   titleBlock: {
     flexDirection: "row",
@@ -360,8 +403,8 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   title: {
-    fontSize: 42,
-    letterSpacing: -1.5,
+    fontSize: 48,
+    letterSpacing: -2,
   },
   tagBadge: {
     paddingHorizontal: Spacing.sm,

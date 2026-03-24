@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, FlatList, Alert } from "react-native";
+import { View, StyleSheet, FlatList, Alert, Platform } from "react-native";
+import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { ScreenScrollView } from "../components/ScreenScrollView";
@@ -7,7 +8,7 @@ import { ThemedText } from "../components/ThemedText";
 import { ThemedView } from "../components/ThemedView";
 import { CouponCard } from "../components/CouponCard";
 import { useTheme } from "../hooks/useTheme";
-import { Spacing, BorderRadius } from "../constants/theme";
+import { Spacing, BorderRadius, Fonts, WebShadows, Gradients } from "../constants/theme";
 import { StorageService } from "../services/storageService";
 import { CollectedCoupon } from "../types";
 
@@ -68,44 +69,57 @@ export default function CollectionScreen() {
 
   return (
     <ScreenScrollView>
-      <View
-        style={[
-          styles.statsCard,
-          {
-            backgroundColor: theme.backgroundDefault,
-            borderColor: theme.border,
-          },
-        ]}
-      >
-        <View style={styles.statItem}>
-          <ThemedText type="h2">{coupons.length}</ThemedText>
-          <ThemedText
-            style={[styles.statLabel, { color: theme.textSecondary }]}
-          >
-            Total Coupons
-          </ThemedText>
+      {/* Hero stats */}
+      <Animated.View entering={FadeInDown.duration(500)}>
+        <View
+          style={[
+            styles.statsCard,
+            {
+              backgroundColor: theme.backgroundDefault,
+              borderColor: theme.primary + "20",
+              ...Platform.select({
+                web: {
+                  background: `${Gradients.web.cardSheen}, ${theme.backgroundDefault}`,
+                  boxShadow: WebShadows.sectionCard,
+                },
+                default: {},
+              }),
+            },
+          ]}
+        >
+          <View style={styles.statItem}>
+            <ThemedText style={{ fontSize: 20 }}>🎁</ThemedText>
+            <ThemedText type="h2" style={{ fontFamily: Fonts?.display }}>{coupons.length}</ThemedText>
+            <ThemedText
+              style={[styles.statLabel, { color: theme.textSecondary }]}
+            >
+              Collected
+            </ThemedText>
+          </View>
+          <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+          <View style={styles.statItem}>
+            <ThemedText style={{ fontSize: 20 }}>💰</ThemedText>
+            <ThemedText type="h2" style={{ color: theme.success, fontFamily: Fonts?.display }}>
+              ${totalSavings}
+            </ThemedText>
+            <ThemedText
+              style={[styles.statLabel, { color: theme.textSecondary }]}
+            >
+              Savings
+            </ThemedText>
+          </View>
+          <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
+          <View style={styles.statItem}>
+            <ThemedText style={{ fontSize: 20 }}>⚡</ThemedText>
+            <ThemedText type="h2" style={{ fontFamily: Fonts?.display }}>{activeCoupons.length}</ThemedText>
+            <ThemedText
+              style={[styles.statLabel, { color: theme.textSecondary }]}
+            >
+              Active
+            </ThemedText>
+          </View>
         </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <ThemedText type="h2" style={{ color: theme.success }}>
-            ${totalSavings}
-          </ThemedText>
-          <ThemedText
-            style={[styles.statLabel, { color: theme.textSecondary }]}
-          >
-            Potential Savings
-          </ThemedText>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <ThemedText type="h2">{activeCoupons.length}</ThemedText>
-          <ThemedText
-            style={[styles.statLabel, { color: theme.textSecondary }]}
-          >
-            Active
-          </ThemedText>
-        </View>
-      </View>
+      </Animated.View>
 
       {activeCoupons.length > 0 && (
         <View style={styles.section}>
@@ -162,20 +176,20 @@ export default function CollectionScreen() {
       )}
 
       {coupons.length === 0 && (
-        <View style={styles.emptyState}>
-          <Feather name="inbox" size={64} color={theme.textSecondary} />
+        <Animated.View entering={FadeInUp.duration(600).delay(200)} style={styles.emptyState}>
+          <ThemedText style={{ fontSize: 64 }}>🗝️</ThemedText>
           <ThemedText
             type="h3"
-            style={[styles.emptyText, { color: theme.textSecondary }]}
+            style={[styles.emptyText, { fontFamily: Fonts?.display }]}
           >
-            No coupons yet
+            Your Treasure Awaits
           </ThemedText>
           <ThemedText
             style={[styles.emptySubtext, { color: theme.textSecondary }]}
           >
-            Discover loot boxes to collect coupons
+            Find loot boxes on the radar to start{"\n"}collecting epic deals and coupons!
           </ThemedText>
-        </View>
+        </Animated.View>
       )}
     </ScreenScrollView>
   );

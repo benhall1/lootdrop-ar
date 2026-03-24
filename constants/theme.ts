@@ -185,45 +185,68 @@ export const Shadows = {
   card: {
     shadowColor: "#FF5722",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
     elevation: 4,
   },
   cardGlow: {
     shadowColor: "#FF6D3A",
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
     elevation: 8,
   },
   mapMarker: {
     shadowColor: "#FF6D3A",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
     elevation: 6,
   },
   fab: {
     shadowColor: "#FF5722",
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
     elevation: 8,
   },
   glow: {
     shadowColor: "#FF6D3A",
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
     elevation: 10,
   },
   accentGlow: {
     shadowColor: "#00E5FF",
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
     elevation: 6,
   },
+  goldGlow: {
+    shadowColor: "#FFD54F",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+};
+
+/**
+ * Web-specific box-shadow strings for richer glow effects.
+ * Use via Platform.select({ web: { boxShadow: WebShadows.card }, default: Shadows.card })
+ */
+export const WebShadows = {
+  card: "0 4px 24px rgba(255, 109, 58, 0.12), 0 1px 4px rgba(0, 0, 0, 0.2)",
+  cardHover: "0 8px 32px rgba(255, 109, 58, 0.2), 0 2px 8px rgba(0, 0, 0, 0.3)",
+  cardGlow: "0 0 32px rgba(255, 109, 58, 0.25), 0 4px 16px rgba(0, 0, 0, 0.2)",
+  fab: "0 6px 24px rgba(255, 87, 34, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3)",
+  neonOrange: "0 0 12px rgba(255, 109, 58, 0.4), 0 0 40px rgba(255, 109, 58, 0.15)",
+  neonGold: "0 0 12px rgba(255, 213, 79, 0.4), 0 0 40px rgba(255, 213, 79, 0.15)",
+  neonCyan: "0 0 12px rgba(0, 229, 255, 0.4), 0 0 40px rgba(0, 229, 255, 0.15)",
+  insetGlow: "inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 16px rgba(0, 0, 0, 0.3)",
+  sectionCard: "0 2px 16px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.04)",
 };
 
 export const Layout = {
@@ -246,4 +269,17 @@ export const Gradients = {
   cardSheen: ["rgba(255,255,255,0.05)", "rgba(255,255,255,0)"],
   darkBackground: ["#0C0F1A", "#141827", "#1C2035"],
   heroGlow: ["rgba(255, 109, 58, 0.15)", "rgba(255, 109, 58, 0)"],
+  /** Web-only CSS gradient strings */
+  web: {
+    heroMesh:
+      "radial-gradient(ellipse at 20% 0%, rgba(255, 109, 58, 0.12) 0%, transparent 50%), " +
+      "radial-gradient(ellipse at 80% 20%, rgba(0, 229, 255, 0.08) 0%, transparent 40%), " +
+      "radial-gradient(ellipse at 50% 100%, rgba(255, 213, 79, 0.06) 0%, transparent 50%)",
+    cardSheen:
+      "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0) 60%)",
+    sectionBg:
+      "linear-gradient(180deg, rgba(20, 24, 39, 0.6) 0%, rgba(20, 24, 39, 0.95) 100%)",
+    neonBorder:
+      "linear-gradient(135deg, rgba(255, 109, 58, 0.5), rgba(255, 213, 79, 0.3), rgba(0, 229, 255, 0.3))",
+  },
 };

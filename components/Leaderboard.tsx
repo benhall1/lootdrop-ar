@@ -3,7 +3,7 @@ import { View, StyleSheet, Platform } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { ThemedText } from "./ThemedText";
 import { useTheme } from "../hooks/useTheme";
-import { Spacing, BorderRadius, Fonts } from "../constants/theme";
+import { Spacing, BorderRadius, Fonts, WebShadows, Gradients } from "../constants/theme";
 
 interface LeaderboardEntry {
   rank: number;
@@ -64,8 +64,12 @@ export function Leaderboard({ userXP = 0, userLevel = 1, userTier = "bronze", us
               borderColor: entry.isCurrentUser ? theme.primary + "40" : theme.border,
               ...Platform.select({
                 web: entry.isCurrentUser
-                  ? { boxShadow: `0 2px 12px ${theme.primaryGlow}` }
-                  : {},
+                  ? {
+                      boxShadow: `0 0 24px ${theme.primaryGlow}, 0 2px 12px rgba(0,0,0,0.2)`,
+                      background: `${Gradients.web.cardSheen}, ${theme.primary}12`,
+                      animation: "lootdrop-border-glow 3s ease-in-out infinite",
+                    }
+                  : { boxShadow: WebShadows.insetGlow },
                 default: {},
               }),
             },

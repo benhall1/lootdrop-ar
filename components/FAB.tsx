@@ -3,7 +3,8 @@ import { Pressable, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useTheme } from "../hooks/useTheme";
-import { Layout, Shadows } from "../constants/theme";
+import { Layout, Shadows, WebShadows } from "../constants/theme";
+import { Platform } from "react-native";
 
 interface FABProps {
   icon: string;
@@ -27,8 +28,15 @@ export function FAB({ icon, onPress, style }: FABProps) {
         {
           backgroundColor: theme.primary,
           transform: [{ scale: pressed ? 0.9 : 1 }],
+          ...Platform.select({
+            web: {
+              boxShadow: pressed ? WebShadows.card : WebShadows.fab,
+              transition: "transform 0.15s ease, box-shadow 0.2s ease",
+            },
+            default: {},
+          }),
         },
-        Shadows.fab,
+        Platform.OS !== "web" ? Shadows.fab : {},
         style,
       ]}
     >

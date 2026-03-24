@@ -243,7 +243,7 @@ export default function MerchantScreen() {
             Manage your loot drops
           </ThemedText>
         </View>
-        <Button title="+ New Drop" onPress={() => setShowCreate(!showCreate)} />
+        <Button onPress={() => setShowCreate(!showCreate)}>+ New Drop</Button>
       </Animated.View>
 
       {/* Stats */}
@@ -298,7 +298,7 @@ export default function MerchantScreen() {
                 Cancel
               </ThemedText>
             </Pressable>
-            <Button title="Create Drop 🎁" onPress={handleCreateDrop} />
+            <Button onPress={handleCreateDrop}>Create Drop 🎁</Button>
           </View>
         </Animated.View>
       )}

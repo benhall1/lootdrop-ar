@@ -1,5 +1,5 @@
 import React, { ReactNode } from "react";
-import { StyleSheet, Pressable, ViewStyle, StyleProp } from "react-native";
+import { StyleSheet, Pressable, ViewStyle, StyleProp, Platform } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -9,7 +9,7 @@ import Animated, {
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { BorderRadius, Spacing, Shadows, Fonts } from "@/constants/theme";
+import { BorderRadius, Spacing, Shadows, Fonts, WebShadows } from "@/constants/theme";
 
 interface ButtonProps {
   onPress?: () => void;
@@ -63,8 +63,16 @@ export function Button({
         {
           backgroundColor: theme.primary,
           opacity: disabled ? 0.4 : 1,
+          ...Platform.select({
+            web: {
+              boxShadow: disabled ? "none" : WebShadows.fab,
+              transition: "box-shadow 0.2s ease",
+              cursor: disabled ? "not-allowed" : "pointer",
+            },
+            default: {},
+          }),
         },
-        Shadows.fab,
+        Platform.OS !== "web" ? Shadows.fab : {},
         style,
         animatedStyle,
       ]}

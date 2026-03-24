@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, Pressable, Image, Alert, Modal } from "react-native";
+import { View, StyleSheet, Pressable, Image, Alert, Modal, Platform } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -7,7 +7,7 @@ import { ScreenScrollView } from "../components/ScreenScrollView";
 import { ThemedText } from "../components/ThemedText";
 import { Button } from "../components/Button";
 import { useTheme } from "../hooks/useTheme";
-import { Spacing, BorderRadius, Layout, Shadows, Fonts } from "../constants/theme";
+import { Spacing, BorderRadius, Layout, Shadows, Fonts, WebShadows, Gradients } from "../constants/theme";
 import { AuthService, User } from "../services/authService";
 import { StorageService } from "../services/storageService";
 import { useAuth } from "../App";
@@ -27,7 +27,20 @@ function StatBadge({
 }) {
   const { theme } = useTheme();
   return (
-    <View style={[statStyles.item, { backgroundColor: color + "12" }]}>
+    <View
+      style={[
+        statStyles.item,
+        {
+          backgroundColor: color + "10",
+          borderWidth: 1,
+          borderColor: color + "18",
+          ...Platform.select({
+            web: { boxShadow: `0 0 20px ${color}12` },
+            default: {},
+          }),
+        },
+      ]}
+    >
       <View style={[statStyles.iconCircle, { backgroundColor: color + "20" }]}>
         <Feather name={icon as any} size={18} color={color} />
       </View>
@@ -160,12 +173,46 @@ export default function ProfileScreen() {
       {/* Avatar & Name */}
       <Animated.View entering={FadeInDown.duration(500)} style={styles.avatarSection}>
         <View style={styles.avatarWrapper}>
-          <View style={[styles.avatarGlow, { backgroundColor: tier.color + "30" }]} />
+          <View
+            style={[
+              styles.avatarGlow,
+              {
+                backgroundColor: tier.color + "25",
+                ...Platform.select({
+                  web: {
+                    boxShadow: `0 0 60px ${tier.color}40, 0 0 120px ${tier.color}15`,
+                    animation: "lootdrop-pulse 4s ease-in-out infinite",
+                  },
+                  default: {},
+                }),
+              },
+            ]}
+          />
           <Image
             source={require("../assets/avatars/gold_chest_avatar.png")}
-            style={[styles.avatar, { borderColor: tier.color }]}
+            style={[
+              styles.avatar,
+              {
+                borderColor: tier.color,
+                ...Platform.select({
+                  web: { boxShadow: `0 0 24px ${tier.color}50` },
+                  default: {},
+                }),
+              },
+            ]}
           />
-          <View style={[styles.tierBadge, { backgroundColor: tier.color }]}>
+          <View
+            style={[
+              styles.tierBadge,
+              {
+                backgroundColor: tier.color,
+                ...Platform.select({
+                  web: { boxShadow: `0 2px 12px ${tier.color}60` },
+                  default: {},
+                }),
+              },
+            ]}
+          >
             <ThemedText style={styles.tierText}>
               {tier.emoji} {tier.label}
             </ThemedText>
@@ -197,10 +244,18 @@ export default function ProfileScreen() {
             styles.merchantCard,
             {
               backgroundColor: theme.backgroundDefault,
-              borderColor: theme.primary + "40",
+              borderColor: theme.primary + "30",
               transform: [{ scale: pressed ? 0.98 : 1 }],
+              ...Platform.select({
+                web: {
+                  background: `${Gradients.web.cardSheen}, ${theme.backgroundDefault}`,
+                  boxShadow: pressed ? WebShadows.card : WebShadows.cardGlow,
+                  transition: "transform 0.15s ease, box-shadow 0.2s ease",
+                },
+                default: {},
+              }),
             },
-            Shadows.card,
+            Platform.OS !== "web" ? Shadows.card : {},
           ]}
         >
           <View style={styles.merchantLeft}>

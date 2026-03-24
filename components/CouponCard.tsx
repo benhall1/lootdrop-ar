@@ -1,10 +1,10 @@
 import React from "react";
-import { View, StyleSheet, Pressable } from "react-native";
+import { View, StyleSheet, Pressable, Platform } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "./ThemedText";
 import { BusinessLogo } from "./BusinessLogo";
 import { useTheme } from "../hooks/useTheme";
-import { Spacing, BorderRadius, Typography, Shadows, Fonts } from "../constants/theme";
+import { Spacing, BorderRadius, Typography, Shadows, Fonts, WebShadows, Gradients } from "../constants/theme";
 import { CollectedCoupon } from "../types";
 
 interface CouponCardProps {
@@ -33,10 +33,22 @@ export function CouponCard({ coupon, onPress }: CouponCardProps) {
         styles.container,
         {
           backgroundColor: theme.backgroundDefault,
-          borderColor: coupon.isUsed ? theme.border : theme.primary + "40",
-          opacity: pressed ? 0.85 : coupon.isUsed ? 0.6 : 1,
+          borderColor: coupon.isUsed ? theme.border : theme.primary + "30",
+          opacity: pressed ? 0.85 : coupon.isUsed ? 0.5 : 1,
+          ...Platform.select({
+            web: !coupon.isUsed && !isExpired
+              ? {
+                  background: `${Gradients.web.cardSheen}, ${theme.backgroundDefault}`,
+                  boxShadow: WebShadows.card,
+                  transition: "transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease",
+                }
+              : {
+                  boxShadow: WebShadows.insetGlow,
+                  transition: "opacity 0.2s ease",
+                },
+            default: !coupon.isUsed && !isExpired ? Shadows.card : {},
+          }),
         },
-        !coupon.isUsed && !isExpired && Shadows.card,
       ]}
     >
       {/* Decorative notch cutouts */}

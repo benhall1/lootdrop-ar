@@ -53,16 +53,17 @@ export default function MainTabNavigator() {
           backgroundColor: Platform.select({
             ios: "transparent",
             android: theme.backgroundRoot,
-            web: theme.backgroundDefault + "F0",
+            web: theme.backgroundRoot + "E8",
             default: theme.backgroundRoot,
           }),
           borderTopWidth: 0,
           elevation: 0,
           ...Platform.select({
             web: {
-              backdropFilter: "blur(20px)",
+              backdropFilter: "blur(24px)",
               borderTopWidth: 1,
-              borderTopColor: theme.border,
+              borderTopColor: theme.primary + "15",
+              boxShadow: `0 -4px 24px rgba(0, 0, 0, 0.3), 0 -1px 0 ${theme.primary}10`,
             },
             default: {},
           }),

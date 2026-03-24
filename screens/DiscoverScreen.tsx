@@ -34,6 +34,8 @@ import {
   BorderRadius,
   Fonts,
   Shadows,
+  WebShadows,
+  Gradients,
 } from "../constants/theme";
 import { mockLootBoxes } from "../services/mockData";
 import { LootBoxService } from "../services/lootBoxService";
@@ -70,13 +72,17 @@ function NearbyCard({
         cardStyles.card,
         {
           backgroundColor: theme.backgroundDefault,
-          borderColor: box.isActive ? theme.primary + "30" : theme.border,
+          borderColor: box.isActive ? theme.primary + "25" : theme.border,
           transform: [{ scale: pressed ? 0.97 : 1 }],
-          opacity: box.isActive ? 1 : 0.6,
+          opacity: box.isActive ? 1 : 0.5,
           ...Platform.select({
-            web: box.isActive
-              ? { boxShadow: `0 4px 20px ${theme.primaryGlow}` }
-              : {},
+            web: {
+              background: box.isActive
+                ? `${Gradients.web.cardSheen}, ${theme.backgroundDefault}`
+                : theme.backgroundDefault,
+              boxShadow: box.isActive ? WebShadows.card : WebShadows.insetGlow,
+              transition: "transform 0.15s ease, box-shadow 0.2s ease",
+            },
             default: box.isActive ? Shadows.card : {},
           }),
         },
@@ -379,7 +385,18 @@ export default function DiscoverScreen({ navigation }: any) {
           </View>
           <View style={styles.headerRight}>
             {activeCount > 0 && (
-              <View style={[styles.activeBadge, { backgroundColor: theme.primary }]}>
+              <View
+                style={[
+                  styles.activeBadge,
+                  {
+                    backgroundColor: theme.primary,
+                    ...Platform.select({
+                      web: { boxShadow: WebShadows.neonOrange },
+                      default: Shadows.glow,
+                    }),
+                  },
+                ]}
+              >
                 <ThemedText style={styles.activeBadgeText}>
                   {activeCount} 🔥
                 </ThemedText>
@@ -396,7 +413,11 @@ export default function DiscoverScreen({ navigation }: any) {
                 styles.modeToggle,
                 {
                   backgroundColor: theme.backgroundSecondary,
-                  borderColor: theme.border,
+                  borderColor: theme.primary + "30",
+                  ...Platform.select({
+                    web: { boxShadow: WebShadows.insetGlow },
+                    default: {},
+                  }),
                 },
               ]}
             >
