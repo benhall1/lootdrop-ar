@@ -12,6 +12,7 @@ import { AuthService, User } from "../services/authService";
 import { StorageService } from "../services/storageService";
 import { useAuth } from "../App";
 import ChatScreen from "./ChatScreen";
+import MerchantScreen from "./MerchantScreen";
 
 function StatBadge({
   icon,
@@ -104,6 +105,7 @@ export default function ProfileScreen() {
   const { theme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [showChatModal, setShowChatModal] = useState(false);
+  const [showMerchantModal, setShowMerchantModal] = useState(false);
   const [stats, setStats] = useState({ coupons: 0, savings: 0, visits: 0 });
 
   useEffect(() => {
@@ -139,18 +141,7 @@ export default function ProfileScreen() {
 
   const handleScheduleDrop = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert(
-      "Schedule Loot Drop",
-      "This feature allows merchants to schedule loot drops at their business location.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Continue",
-          onPress: () =>
-            Alert.alert("Success", "Loot drop scheduled successfully!"),
-        },
-      ]
-    );
+    setShowMerchantModal(true);
   };
 
   const handleSignOut = () => {
@@ -288,6 +279,37 @@ export default function ProfileScreen() {
             </Pressable>
           </View>
           <ChatScreen />
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showMerchantModal}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowMerchantModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
+          <View
+            style={[
+              styles.modalHeader,
+              {
+                backgroundColor: theme.backgroundDefault,
+                borderBottomColor: theme.border,
+              },
+            ]}
+          >
+            <ThemedText type="h3">Merchant Hub</ThemedText>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowMerchantModal(false);
+              }}
+              style={styles.closeButton}
+            >
+              <Feather name="x" size={24} color={theme.text} />
+            </Pressable>
+          </View>
+          <MerchantScreen />
         </View>
       </Modal>
     </ScreenScrollView>

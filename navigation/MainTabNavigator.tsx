@@ -7,8 +7,8 @@ import DiscoverScreen from "@/screens/DiscoverScreen";
 import MapScreen from "@/screens/MapScreen";
 import CollectionScreen from "@/screens/CollectionScreen";
 import ProfileScreen from "@/screens/ProfileScreen";
-import SubscriptionScreen from "@/screens/SubscriptionScreen";
 import MerchantScreen from "@/screens/MerchantScreen";
+import SocialScreen from "@/screens/SocialScreen";
 import { useTheme } from "@/hooks/useTheme";
 import { Fonts } from "@/constants/theme";
 
@@ -16,8 +16,7 @@ export type MainTabParamList = {
   Discover: undefined;
   Map: undefined;
   Collection: undefined;
-  Merchant: undefined;
-  Premium: undefined;
+  Social: undefined;
   Profile: undefined;
 };
 
@@ -110,12 +109,12 @@ export default function MainTabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Merchant"
-        component={MerchantScreen}
+        name="Social"
+        component={SocialScreen}
         options={{
-          title: "Merchant",
+          title: "Social",
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="briefcase" color={color} focused={focused} />
+            <TabIcon name="award" color={color} focused={focused} />
           ),
         }}
       />
