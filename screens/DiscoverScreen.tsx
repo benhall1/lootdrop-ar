@@ -23,6 +23,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { ThemedText } from "../components/ThemedText";
 import { RadarView } from "../components/RadarView";
+import { CameraARView } from "../components/CameraARView";
 import { XPBar } from "../components/XPBar";
 import { ClaimCelebration } from "../components/ClaimCelebration";
 import { BusinessLogo } from "../components/BusinessLogo";
@@ -181,6 +182,8 @@ export default function DiscoverScreen({ navigation }: any) {
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [nearbyLootBoxes, setNearbyLootBoxes] = useState<LootBox[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState<"radar" | "camera">("radar");
+  const [compassHeading, setCompassHeading] = useState<number | null>(null);
   const [gamification, setGamification] = useState<GamificationState | null>(null);
   const [celebration, setCelebration] = useState<{
     visible: boolean;
@@ -200,6 +203,30 @@ export default function DiscoverScreen({ navigation }: any) {
   const shimmerStyle = useAnimatedStyle(() => ({
     opacity: 0.5 + shimmer.value * 0.5,
   }));
+
+  // Listen for device compass heading (for AR camera mode)
+  useEffect(() => {
+    if (Platform.OS !== "web" || viewMode !== "camera") return;
+
+    const handler = (e: DeviceOrientationEvent) => {
+      // webkitCompassHeading for iOS Safari, alpha for others
+      const heading = (e as any).webkitCompassHeading ?? (e.alpha !== null ? 360 - e.alpha : null);
+      if (heading !== null) setCompassHeading(heading);
+    };
+
+    // iOS 13+ requires permission
+    if (typeof (DeviceOrientationEvent as any).requestPermission === "function") {
+      (DeviceOrientationEvent as any).requestPermission().then((result: string) => {
+        if (result === "granted") {
+          window.addEventListener("deviceorientation", handler);
+        }
+      });
+    } else {
+      window.addEventListener("deviceorientation", handler);
+    }
+
+    return () => window.removeEventListener("deviceorientation", handler);
+  }, [viewMode]);
 
   // Load gamification state
   useEffect(() => {
@@ -350,13 +377,39 @@ export default function DiscoverScreen({ navigation }: any) {
               </ThemedText>
             </Animated.View>
           </View>
-          {activeCount > 0 && (
-            <View style={[styles.activeBadge, { backgroundColor: theme.primary }]}>
-              <ThemedText style={styles.activeBadgeText}>
-                {activeCount} 🔥
+          <View style={styles.headerRight}>
+            {activeCount > 0 && (
+              <View style={[styles.activeBadge, { backgroundColor: theme.primary }]}>
+                <ThemedText style={styles.activeBadgeText}>
+                  {activeCount} 🔥
+                </ThemedText>
+              </View>
+            )}
+            {/* View mode toggle */}
+            <Pressable
+              onPress={() => {
+                SoundService.tap();
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setViewMode(viewMode === "radar" ? "camera" : "radar");
+              }}
+              style={[
+                styles.modeToggle,
+                {
+                  backgroundColor: theme.backgroundSecondary,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
+              <Feather
+                name={viewMode === "radar" ? "camera" : "radio"}
+                size={16}
+                color={theme.text}
+              />
+              <ThemedText style={[styles.modeToggleText, { color: theme.text }]}>
+                {viewMode === "radar" ? "AR" : "Radar"}
               </ThemedText>
-            </View>
-          )}
+            </Pressable>
+          </View>
         </Animated.View>
 
         {/* XP Bar */}
@@ -366,14 +419,25 @@ export default function DiscoverScreen({ navigation }: any) {
           </Animated.View>
         )}
 
-        {/* Radar */}
-        <Animated.View entering={FadeInDown.duration(600).delay(100)} style={styles.radarSection}>
-          <RadarView
-            lootBoxes={nearbyLootBoxes}
-            userLocation={userLocation}
-            onLootBoxTap={handleLootBoxTap}
-          />
-        </Animated.View>
+        {/* Radar or Camera AR */}
+        {viewMode === "radar" ? (
+          <Animated.View entering={FadeInDown.duration(600).delay(100)} style={styles.radarSection}>
+            <RadarView
+              lootBoxes={nearbyLootBoxes}
+              userLocation={userLocation}
+              onLootBoxTap={handleLootBoxTap}
+            />
+          </Animated.View>
+        ) : (
+          <View style={styles.cameraSection}>
+            <CameraARView
+              lootBoxes={nearbyLootBoxes}
+              userLocation={userLocation}
+              onLootBoxTap={handleLootBoxTap}
+              compassHeading={compassHeading}
+            />
+          </View>
+        )}
 
         {/* Nearby list */}
         {nearbyLootBoxes.length > 0 && (
@@ -462,6 +526,24 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginTop: 2,
   },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  modeToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+  },
+  modeToggleText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
   activeBadge: {
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.xs,
@@ -474,6 +556,12 @@ const styles = StyleSheet.create({
   },
   radarSection: {
     alignItems: "center",
+    marginBottom: Spacing["3xl"],
+  },
+  cameraSection: {
+    height: 400,
+    borderRadius: BorderRadius.lg,
+    overflow: "hidden",
     marginBottom: Spacing["3xl"],
   },
   listSection: {

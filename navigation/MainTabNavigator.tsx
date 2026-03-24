@@ -8,6 +8,7 @@ import MapScreen from "@/screens/MapScreen";
 import CollectionScreen from "@/screens/CollectionScreen";
 import ProfileScreen from "@/screens/ProfileScreen";
 import SubscriptionScreen from "@/screens/SubscriptionScreen";
+import MerchantScreen from "@/screens/MerchantScreen";
 import { useTheme } from "@/hooks/useTheme";
 import { Fonts } from "@/constants/theme";
 
@@ -15,6 +16,7 @@ export type MainTabParamList = {
   Discover: undefined;
   Map: undefined;
   Collection: undefined;
+  Merchant: undefined;
   Premium: undefined;
   Profile: undefined;
 };
@@ -108,12 +110,12 @@ export default function MainTabNavigator() {
         }}
       />
       <Tab.Screen
-        name="Premium"
-        component={SubscriptionScreen}
+        name="Merchant"
+        component={MerchantScreen}
         options={{
-          title: "Premium",
+          title: "Merchant",
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="zap" color={color} focused={focused} />
+            <TabIcon name="briefcase" color={color} focused={focused} />
           ),
         }}
       />
