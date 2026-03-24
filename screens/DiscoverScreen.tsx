@@ -1,22 +1,178 @@
-import React, { useState, useEffect } from "react";
-import { View, StyleSheet, Pressable, Alert } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  View,
+  StyleSheet,
+  Pressable,
+  Alert,
+  ScrollView,
+  Platform,
+  RefreshControl,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ThemedText } from "../components/ThemedText";
-import { ThemedView } from "../components/ThemedView";
-import { FAB } from "../components/FAB";
-import { ARCamera } from "../components/ARCamera";
-import { useTheme } from "../hooks/useTheme";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { Spacing, Layout, BorderRadius } from "../constants/theme";
+import { ThemedText } from "../components/ThemedText";
+import { RadarView } from "../components/RadarView";
+import { XPBar } from "../components/XPBar";
+import { ClaimCelebration } from "../components/ClaimCelebration";
+import { BusinessLogo } from "../components/BusinessLogo";
+import { FAB } from "../components/FAB";
+import { useTheme } from "../hooks/useTheme";
+import {
+  Spacing,
+  BorderRadius,
+  Fonts,
+  Shadows,
+} from "../constants/theme";
 import { mockLootBoxes } from "../services/mockData";
 import { LootBoxService } from "../services/lootBoxService";
 import { ClaimService } from "../services/claimService";
+import { GamificationService, GamificationState, ClaimResult } from "../services/gamificationService";
+import { SoundService } from "../services/soundService";
 import { calculateDistance, formatDistance } from "../services/geolocation";
 import { LocationService } from "../services/locationService";
 import { StorageService } from "../services/storageService";
-import { UserLocation, LootBox, CollectedCoupon } from "../types";
+import { UserLocation, LootBox } from "../types";
+
+const CATEGORY_EMOJI: Record<string, string> = {
+  restaurant: "🍕",
+  retail: "🛍️",
+  entertainment: "🎮",
+  services: "⚡",
+};
+
+function NearbyCard({
+  box,
+  distance,
+  onPress,
+}: {
+  box: LootBox;
+  distance: number;
+  onPress: () => void;
+}) {
+  const { theme } = useTheme();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        cardStyles.card,
+        {
+          backgroundColor: theme.backgroundDefault,
+          borderColor: box.isActive ? theme.primary + "30" : theme.border,
+          transform: [{ scale: pressed ? 0.97 : 1 }],
+          opacity: box.isActive ? 1 : 0.6,
+          ...Platform.select({
+            web: box.isActive
+              ? { boxShadow: `0 4px 20px ${theme.primaryGlow}` }
+              : {},
+            default: box.isActive ? Shadows.card : {},
+          }),
+        },
+      ]}
+    >
+      <BusinessLogo
+        businessName={box.businessName}
+        logoUrl={box.businessLogo}
+        size={44}
+      />
+      <View style={cardStyles.info}>
+        <ThemedText style={[cardStyles.name, { fontFamily: Fonts?.sans }]}>
+          {box.businessName}
+        </ThemedText>
+        <View style={cardStyles.meta}>
+          <ThemedText style={[cardStyles.distance, { color: theme.accent }]}>
+            {formatDistance(distance)}
+          </ThemedText>
+          {box.isActive && (
+            <ThemedText style={[cardStyles.value, { color: theme.secondary }]}>
+              {box.coupon.value}
+            </ThemedText>
+          )}
+        </View>
+      </View>
+      <View style={cardStyles.right}>
+        <ThemedText style={cardStyles.emoji}>
+          {CATEGORY_EMOJI[box.category || ""] || "📦"}
+        </ThemedText>
+        {box.isActive ? (
+          <View style={[cardStyles.liveBadge, { backgroundColor: theme.primary + "20" }]}>
+            <ThemedText style={[cardStyles.liveText, { color: theme.primary }]}>
+              LIVE
+            </ThemedText>
+          </View>
+        ) : (
+          <ThemedText style={[cardStyles.cooldown, { color: theme.textSecondary }]}>
+            ⏳
+          </ThemedText>
+        )}
+      </View>
+    </Pressable>
+  );
+}
+
+const cardStyles = StyleSheet.create({
+  card: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    gap: Spacing.md,
+  },
+  info: {
+    flex: 1,
+    gap: 2,
+  },
+  name: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  meta: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    alignItems: "center",
+  },
+  distance: {
+    fontSize: 12,
+    fontWeight: "700",
+    fontFamily: Fonts?.mono,
+  },
+  value: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  right: {
+    alignItems: "center",
+    gap: 4,
+  },
+  emoji: {
+    fontSize: 22,
+  },
+  liveBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 6,
+  },
+  liveText: {
+    fontSize: 9,
+    fontWeight: "800",
+    letterSpacing: 1,
+  },
+  cooldown: {
+    fontSize: 14,
+  },
+});
 
 export default function DiscoverScreen({ navigation }: any) {
   const { theme } = useTheme();
@@ -24,270 +180,267 @@ export default function DiscoverScreen({ navigation }: any) {
   const tabBarHeight = useBottomTabBarHeight();
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [nearbyLootBoxes, setNearbyLootBoxes] = useState<LootBox[]>([]);
-  const [closestLootBox, setClosestLootBox] = useState<LootBox | null>(null);
-  const [showCamera, setShowCamera] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [gamification, setGamification] = useState<GamificationState | null>(null);
+  const [celebration, setCelebration] = useState<{
+    visible: boolean;
+    box: LootBox | null;
+    claimResult: ClaimResult | null;
+  }>({ visible: false, box: null, claimResult: null });
 
+  // Scanning text shimmer
+  const shimmer = useSharedValue(0);
   useEffect(() => {
-    let locationSubscription: any = null;
+    shimmer.value = withRepeat(
+      withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true
+    );
+  }, []);
+  const shimmerStyle = useAnimatedStyle(() => ({
+    opacity: 0.5 + shimmer.value * 0.5,
+  }));
 
-    const startLocationTracking = async () => {
-      const currentLocation = await LocationService.getCurrentLocation();
-      if (currentLocation) {
-        setUserLocation(currentLocation);
-        
-        locationSubscription = await LocationService.watchLocation((location) => {
-          setUserLocation(location);
-        });
-      }
-    };
-
-    startLocationTracking();
-
-    return () => {
-      if (locationSubscription) {
-        locationSubscription.remove();
-      }
-    };
+  // Load gamification state
+  useEffect(() => {
+    GamificationService.getState().then(setGamification);
   }, []);
 
   useEffect(() => {
-    if (!userLocation) return;
+    let sub: any = null;
+    (async () => {
+      const loc = await LocationService.getCurrentLocation();
+      if (loc) {
+        setUserLocation(loc);
+        sub = await LocationService.watchLocation(setUserLocation);
+      }
+    })();
+    return () => sub?.remove();
+  }, []);
 
-    const fetchNearby = async () => {
-      try {
-        let boxes = await LootBoxService.getNearby(
-          userLocation.latitude,
-          userLocation.longitude,
-          2
-        );
-        if (boxes.length === 0) {
-          // Fall back to mock data when Supabase is empty/unavailable
-          boxes = mockLootBoxes.filter((box) => {
-            const distance = calculateDistance(userLocation, {
+  const fetchNearby = useCallback(async () => {
+    if (!userLocation) return;
+    try {
+      let boxes = await LootBoxService.getNearby(
+        userLocation.latitude,
+        userLocation.longitude,
+        2
+      );
+      if (boxes.length === 0) {
+        boxes = mockLootBoxes.filter(
+          (box) =>
+            calculateDistance(userLocation, {
               latitude: box.latitude,
               longitude: box.longitude,
-            });
-            return distance < 2;
-          });
-        }
-
-        const sorted = boxes.sort((a, b) => {
-          const distA = calculateDistance(userLocation, {
-            latitude: a.latitude,
-            longitude: a.longitude,
-          });
-          const distB = calculateDistance(userLocation, {
-            latitude: b.latitude,
-            longitude: b.longitude,
-          });
-          return distA - distB;
-        });
-
-        setNearbyLootBoxes(sorted);
-        if (sorted.length > 0) {
-          setClosestLootBox(sorted[0]);
-        }
-      } catch {
-        // Fallback to mock data on error
-        setNearbyLootBoxes(mockLootBoxes);
-        setClosestLootBox(mockLootBoxes[0] || null);
+            }) < 2
+        );
       }
-    };
-
-    fetchNearby();
+      const sorted = boxes.sort((a, b) => {
+        const dA = calculateDistance(userLocation, { latitude: a.latitude, longitude: a.longitude });
+        const dB = calculateDistance(userLocation, { latitude: b.latitude, longitude: b.longitude });
+        return dA - dB;
+      });
+      setNearbyLootBoxes(sorted);
+    } catch {
+      setNearbyLootBoxes(mockLootBoxes);
+    }
   }, [userLocation]);
 
-  const handleDiscoverLootBox = async (lootBox: LootBox) => {
-    if (!lootBox || !lootBox.isActive) {
-      Alert.alert(
-        "Not Available",
-        "This loot box is not active yet. Check the timer!"
-      );
+  useEffect(() => {
+    fetchNearby();
+  }, [fetchNearby]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchNearby();
+    setRefreshing(false);
+  };
+
+  const handleLootBoxTap = async (box: LootBox) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    if (!box.isActive) {
+      Alert.alert("Recharging ⏳", `${box.businessName}'s loot box is recharging. Check back soon!`);
       return;
     }
-
     if (!userLocation) {
       Alert.alert("Location Required", "Enable location to claim loot boxes.");
       return;
     }
 
+    const distance = calculateDistance(userLocation, {
+      latitude: box.latitude,
+      longitude: box.longitude,
+    });
+
+    if (distance > 0.1) {
+      Alert.alert(
+        `${box.businessName}`,
+        `🎁 ${box.coupon.value}\n📍 ${formatDistance(distance)} away\n\nGet closer to claim this loot box!`,
+        [
+          {
+            text: "Get Directions",
+            onPress: () => {
+              const url = `https://www.google.com/maps/dir/?api=1&destination=${box.latitude},${box.longitude}`;
+              if (Platform.OS === "web") {
+                window.open(url, "_blank");
+              }
+            },
+          },
+          { text: "OK", style: "cancel" },
+        ]
+      );
+      return;
+    }
+
+    // Close enough to claim
+    SoundService.chestOpen();
     const result = await ClaimService.claimLootBox(
-      lootBox.id,
+      box.id,
       userLocation.latitude,
       userLocation.longitude
     );
 
     if (result.success) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-      // Also store locally for offline access
       if (result.coupon) {
         await StorageService.addCollectedCoupon(result.coupon);
       }
 
-      Alert.alert(
-        "Loot Box Opened!",
-        `You discovered: ${lootBox.coupon.title}\nCode: ${lootBox.coupon.code}`,
-        [
-          {
-            text: "View Collection",
-            onPress: () => navigation.navigate("Collection"),
-          },
-          { text: "OK", style: "cancel" },
-        ]
-      );
+      // Record in gamification system
+      const claimResult = await GamificationService.recordClaim(box.businessName);
+      setGamification(await GamificationService.getState());
+
+      // Play celebration sounds
+      SoundService.claimSuccess();
+      if (claimResult.leveledUp) setTimeout(() => SoundService.levelUp(), 800);
+      if (claimResult.newBadges.length > 0) setTimeout(() => SoundService.badgeUnlock(), 600);
+
+      // Show celebration modal
+      setCelebration({ visible: true, box, claimResult });
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      SoundService.error();
       Alert.alert("Claim Failed", result.message || "Could not claim this loot box.");
     }
   };
 
-  const getDistanceToClosest = () => {
-    if (!userLocation || !closestLootBox) return null;
-    const distance = calculateDistance(userLocation, {
-      latitude: closestLootBox.latitude,
-      longitude: closestLootBox.longitude,
-    });
-    return formatDistance(distance);
-  };
+  const activeCount = nearbyLootBoxes.filter((b) => b.isActive).length;
 
   return (
-    <ThemedView style={styles.container}>
-      <View
-        style={[
-          styles.header,
-          {
-            paddingTop: insets.top + Spacing.xl,
-            backgroundColor: theme.arOverlay,
-          },
+    <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scroll,
+          { paddingTop: insets.top + Spacing.lg, paddingBottom: tabBarHeight + Spacing["2xl"] },
         ]}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />
+        }
       >
-        <Pressable
-          style={styles.infoButton}
-          onPress={() =>
-            Alert.alert(
-              "AR Discovery",
-              "Point your camera around to discover loot boxes at nearby businesses!"
-            )
-          }
-        >
-          <Feather name="info" size={20} color={theme.text} />
-        </Pressable>
-      </View>
+        {/* Header */}
+        <Animated.View entering={FadeInDown.duration(500)} style={styles.header}>
+          <View>
+            <ThemedText type="h2" style={{ fontFamily: Fonts?.display }}>
+              Discover
+            </ThemedText>
+            <Animated.View style={shimmerStyle}>
+              <ThemedText style={[styles.subtitle, { color: theme.textSecondary }]}>
+                {userLocation ? `Scanning ${nearbyLootBoxes.length} locations...` : "Getting your location..."}
+              </ThemedText>
+            </Animated.View>
+          </View>
+          {activeCount > 0 && (
+            <View style={[styles.activeBadge, { backgroundColor: theme.primary }]}>
+              <ThemedText style={styles.activeBadgeText}>
+                {activeCount} 🔥
+              </ThemedText>
+            </View>
+          )}
+        </Animated.View>
 
-      {showCamera ? (
-        <ARCamera
-          nearbyLootBoxes={nearbyLootBoxes}
-          onLootBoxTap={handleDiscoverLootBox}
-        />
-      ) : (
-        <View style={styles.cameraPlaceholder}>
-          <Feather
-            name="camera"
-            size={64}
-            color={theme.textSecondary}
-            style={{ opacity: 0.3 }}
+        {/* XP Bar */}
+        {gamification && (
+          <Animated.View entering={FadeInDown.duration(500).delay(50)} style={{ marginBottom: Spacing.xl }}>
+            <XPBar state={gamification} compact />
+          </Animated.View>
+        )}
+
+        {/* Radar */}
+        <Animated.View entering={FadeInDown.duration(600).delay(100)} style={styles.radarSection}>
+          <RadarView
+            lootBoxes={nearbyLootBoxes}
+            userLocation={userLocation}
+            onLootBoxTap={handleLootBoxTap}
           />
-          <ThemedText
-            style={[styles.placeholderText, { color: theme.textSecondary }]}
-          >
-            AR Camera View
-          </ThemedText>
-          <ThemedText
-            style={[styles.placeholderSubtext, { color: theme.textSecondary }]}
-          >
-            Camera access required for full AR experience
-          </ThemedText>
-        </View>
-      )}
+        </Animated.View>
 
-      {closestLootBox && (
-        <View
-          style={[
-            styles.distanceIndicator,
-            {
-              top: insets.top + Spacing.xl + 50,
-              backgroundColor: theme.backgroundDefault,
-            },
-          ]}
-        >
-          <Feather name="navigation" size={16} color={theme.primary} />
-          <ThemedText style={styles.distanceText}>
-            {getDistanceToClosest()}
-          </ThemedText>
-        </View>
-      )}
+        {/* Nearby list */}
+        {nearbyLootBoxes.length > 0 && (
+          <Animated.View entering={FadeInUp.duration(500).delay(300)} style={styles.listSection}>
+            <ThemedText type="h4" style={styles.listTitle}>
+              Nearby Loot
+            </ThemedText>
+            <View style={styles.cardList}>
+              {nearbyLootBoxes.map((box, i) => (
+                <Animated.View
+                  key={box.id}
+                  entering={FadeInUp.duration(400).delay(400 + i * 80)}
+                >
+                  <NearbyCard
+                    box={box}
+                    distance={
+                      userLocation
+                        ? calculateDistance(userLocation, {
+                            latitude: box.latitude,
+                            longitude: box.longitude,
+                          })
+                        : 0
+                    }
+                    onPress={() => handleLootBoxTap(box)}
+                  />
+                </Animated.View>
+              ))}
+            </View>
+          </Animated.View>
+        )}
 
-      <View
-        style={[
-          styles.lootCounter,
-          {
-            top: insets.top + Spacing.xl + 50,
-            backgroundColor: theme.primary,
-          },
-        ]}
-      >
-        <ThemedText style={styles.counterText}>
-          {nearbyLootBoxes.filter((b) => b.isActive).length}
-        </ThemedText>
-      </View>
+        {/* Empty state */}
+        {nearbyLootBoxes.length === 0 && userLocation && (
+          <Animated.View entering={FadeInUp.duration(500).delay(300)} style={styles.emptyState}>
+            <ThemedText style={{ fontSize: 48 }}>🔍</ThemedText>
+            <ThemedText type="h4" style={{ textAlign: "center" }}>
+              No loot boxes nearby
+            </ThemedText>
+            <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
+              Try exploring a different area or check back later!
+            </ThemedText>
+          </Animated.View>
+        )}
+      </ScrollView>
 
-      <View
-        style={[
-          styles.minimap,
-          {
-            bottom: tabBarHeight + Spacing.xl,
-            backgroundColor: theme.backgroundDefault,
-            borderColor: theme.border,
-          },
-        ]}
-      >
-        <View style={styles.minimapContent}>
-          <View
-            style={[styles.userDot, { backgroundColor: theme.accent }]}
-          />
-          {nearbyLootBoxes.slice(0, 5).map((box, index) => (
-            <View
-              key={box.id}
-              style={[
-                styles.lootDot,
-                {
-                  backgroundColor: box.isActive
-                    ? theme.markerActive
-                    : theme.markerInactive,
-                  left: 40 + index * 15,
-                  top: 40 + index * 10,
-                },
-              ]}
-            />
-          ))}
-        </View>
-      </View>
-
-      {closestLootBox && closestLootBox.isActive && (
-        <Pressable
-          onPress={() => handleDiscoverLootBox(closestLootBox)}
-          style={[
-            styles.discoverButton,
-            {
-              bottom: tabBarHeight + Spacing.xl,
-              backgroundColor: theme.primary,
-            },
-          ]}
-        >
-          <Feather name="gift" size={24} color="#FFF" />
-          <ThemedText style={styles.discoverButtonText}>
-            Open Loot Box
-          </ThemedText>
-        </Pressable>
-      )}
-
+      {/* Map FAB */}
       <FAB
         icon="map"
         onPress={() => navigation.navigate("Map")}
-        style={[styles.fab, { bottom: tabBarHeight + Spacing.xl }]}
+        style={{
+          position: "absolute",
+          right: Spacing.lg,
+          bottom: tabBarHeight + Spacing.lg,
+        }}
       />
-    </ThemedView>
+
+      {/* Claim celebration modal */}
+      <ClaimCelebration
+        visible={celebration.visible}
+        onClose={() => setCelebration({ visible: false, box: null, claimResult: null })}
+        couponTitle={celebration.box?.coupon.title || ""}
+        couponCode={celebration.box?.coupon.code || ""}
+        couponValue={celebration.box?.coupon.value || ""}
+        businessName={celebration.box?.businessName || ""}
+        claimResult={celebration.claimResult}
+      />
+    </View>
   );
 }
 
@@ -295,111 +448,50 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 10,
-    flexDirection: "row",
-    justifyContent: "flex-end",
+  scroll: {
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.lg,
   },
-  infoButton: {
-    width: 40,
-    height: 40,
-    justifyContent: "center",
-    alignItems: "center",
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: Spacing.xl,
   },
-  cameraPlaceholder: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  placeholderText: {
-    marginTop: Spacing.lg,
-    fontSize: 18,
+  subtitle: {
+    fontSize: 13,
     fontWeight: "600",
+    marginTop: 2,
   },
-  placeholderSubtext: {
-    marginTop: Spacing.sm,
-    fontSize: 14,
-    opacity: 0.7,
-  },
-  distanceIndicator: {
-    position: "absolute",
-    left: Spacing.lg,
-    flexDirection: "row",
-    alignItems: "center",
+  activeBadge: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.xs,
     borderRadius: BorderRadius.full,
-    gap: Spacing.xs,
   },
-  distanceText: {
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  lootCounter: {
-    position: "absolute",
-    right: Spacing.lg,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  counterText: {
-    fontSize: 16,
-    fontWeight: "700",
+  activeBadgeText: {
     color: "#FFF",
+    fontSize: 13,
+    fontWeight: "800",
   },
-  minimap: {
-    position: "absolute",
-    left: Spacing.lg,
-    width: Layout.minimapSize,
-    height: Layout.minimapSize,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    overflow: "hidden",
-  },
-  minimapContent: {
-    flex: 1,
-    position: "relative",
-  },
-  userDot: {
-    position: "absolute",
-    left: Layout.minimapSize / 2 - 4,
-    top: Layout.minimapSize / 2 - 4,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  lootDot: {
-    position: "absolute",
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  discoverButton: {
-    position: "absolute",
-    left: Spacing.lg,
-    right: Spacing.lg,
-    flexDirection: "row",
+  radarSection: {
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: Spacing.lg,
-    borderRadius: BorderRadius.md,
+    marginBottom: Spacing["3xl"],
+  },
+  listSection: {
+    gap: Spacing.md,
+  },
+  listTitle: {
+    fontFamily: Fonts?.display,
+  },
+  cardList: {
     gap: Spacing.sm,
   },
-  discoverButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#FFF",
+  emptyState: {
+    alignItems: "center",
+    gap: Spacing.md,
+    paddingVertical: Spacing["4xl"],
   },
-  fab: {
-    position: "absolute",
-    right: Spacing.lg,
+  emptyText: {
+    fontSize: 14,
+    textAlign: "center",
   },
 });
