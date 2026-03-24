@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 import { StyleSheet } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -9,24 +9,43 @@ import { StatusBar } from "expo-status-bar";
 import MainTabNavigator from "@/navigation/MainTabNavigator";
 import LoginScreen from "@/screens/LoginScreen";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { WebFontLoader } from "@/components/WebFontLoader";
 import { AuthService } from "@/services/authService";
+
+interface AuthContextType {
+  signOut: () => Promise<void>;
+}
+
+export const AuthContext = createContext<AuthContextType>({ signOut: async () => {} });
+export const useAuth = () => useContext(AuthContext);
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    checkAuth();
-  }, []);
+    // Check initial auth state
+    AuthService.isSignedIn().then((signedIn) => {
+      setIsAuthenticated(signedIn);
+      setIsLoading(false);
+    });
 
-  const checkAuth = async () => {
-    const isSignedIn = await AuthService.isSignedIn();
-    setIsAuthenticated(isSignedIn);
-    setIsLoading(false);
-  };
+    // Listen for auth state changes (sign in, sign out, token refresh)
+    const unsubscribe = AuthService.onAuthStateChange((session) => {
+      setIsAuthenticated(!!session);
+      setIsLoading(false);
+    });
+
+    return unsubscribe;
+  }, []);
 
   const handleLoginSuccess = () => {
     setIsAuthenticated(true);
+  };
+
+  const handleSignOut = async () => {
+    await AuthService.signOut();
+    setIsAuthenticated(false);
   };
 
   if (isLoading) {
@@ -35,13 +54,16 @@ export default function App() {
 
   return (
   <ErrorBoundary>
+    <WebFontLoader />
     <SafeAreaProvider>
         <GestureHandlerRootView style={styles.root}>
           <KeyboardProvider>
             {isAuthenticated ? (
-              <NavigationContainer>
-                <MainTabNavigator />
-              </NavigationContainer>
+              <AuthContext.Provider value={{ signOut: handleSignOut }}>
+                <NavigationContainer>
+                  <MainTabNavigator />
+                </NavigationContainer>
+              </AuthContext.Provider>
             ) : (
               <LoginScreen onLoginSuccess={handleLoginSuccess} />
             )}

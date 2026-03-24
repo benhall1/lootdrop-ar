@@ -11,6 +11,8 @@ import { useTheme } from "../hooks/useTheme";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Spacing, Layout, BorderRadius } from "../constants/theme";
 import { mockLootBoxes } from "../services/mockData";
+import { LootBoxService } from "../services/lootBoxService";
+import { ClaimService } from "../services/claimService";
 import { calculateDistance, formatDistance } from "../services/geolocation";
 import { LocationService } from "../services/locationService";
 import { StorageService } from "../services/storageService";
@@ -49,16 +51,27 @@ export default function DiscoverScreen({ navigation }: any) {
   }, []);
 
   useEffect(() => {
-    if (userLocation) {
-      const nearby = mockLootBoxes
-        .filter((box) => {
-          const distance = calculateDistance(userLocation, {
-            latitude: box.latitude,
-            longitude: box.longitude,
+    if (!userLocation) return;
+
+    const fetchNearby = async () => {
+      try {
+        let boxes = await LootBoxService.getNearby(
+          userLocation.latitude,
+          userLocation.longitude,
+          2
+        );
+        if (boxes.length === 0) {
+          // Fall back to mock data when Supabase is empty/unavailable
+          boxes = mockLootBoxes.filter((box) => {
+            const distance = calculateDistance(userLocation, {
+              latitude: box.latitude,
+              longitude: box.longitude,
+            });
+            return distance < 2;
           });
-          return distance < 2;
-        })
-        .sort((a, b) => {
+        }
+
+        const sorted = boxes.sort((a, b) => {
           const distA = calculateDistance(userLocation, {
             latitude: a.latitude,
             longitude: a.longitude,
@@ -70,41 +83,62 @@ export default function DiscoverScreen({ navigation }: any) {
           return distA - distB;
         });
 
-      setNearbyLootBoxes(nearby);
-      if (nearby.length > 0) {
-        setClosestLootBox(nearby[0]);
+        setNearbyLootBoxes(sorted);
+        if (sorted.length > 0) {
+          setClosestLootBox(sorted[0]);
+        }
+      } catch {
+        // Fallback to mock data on error
+        setNearbyLootBoxes(mockLootBoxes);
+        setClosestLootBox(mockLootBoxes[0] || null);
       }
-    }
+    };
+
+    fetchNearby();
   }, [userLocation]);
 
   const handleDiscoverLootBox = async (lootBox: LootBox) => {
-    if (lootBox && lootBox.isActive) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
-      const collectedCoupon: CollectedCoupon = {
-        ...lootBox.coupon,
-        collectedAt: Date.now(),
-        isUsed: false,
-      };
-      
-      await StorageService.addCollectedCoupon(collectedCoupon);
-      
-      Alert.alert(
-        "Loot Box Opened!",
-        `You discovered: ${lootBox.coupon.title}\nCode: ${lootBox.coupon.code}`,
-        [
-          { 
-            text: "View Collection", 
-            onPress: () => navigation.navigate("Collection") 
-          },
-          { text: "OK", style: "cancel" }
-        ]
-      );
-    } else {
+    if (!lootBox || !lootBox.isActive) {
       Alert.alert(
         "Not Available",
         "This loot box is not active yet. Check the timer!"
       );
+      return;
+    }
+
+    if (!userLocation) {
+      Alert.alert("Location Required", "Enable location to claim loot boxes.");
+      return;
+    }
+
+    const result = await ClaimService.claimLootBox(
+      lootBox.id,
+      userLocation.latitude,
+      userLocation.longitude
+    );
+
+    if (result.success) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+      // Also store locally for offline access
+      if (result.coupon) {
+        await StorageService.addCollectedCoupon(result.coupon);
+      }
+
+      Alert.alert(
+        "Loot Box Opened!",
+        `You discovered: ${lootBox.coupon.title}\nCode: ${lootBox.coupon.code}`,
+        [
+          {
+            text: "View Collection",
+            onPress: () => navigation.navigate("Collection"),
+          },
+          { text: "OK", style: "cancel" },
+        ]
+      );
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert("Claim Failed", result.message || "Could not claim this loot box.");
     }
   };
 

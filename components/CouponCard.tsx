@@ -2,10 +2,9 @@ import React from "react";
 import { View, StyleSheet, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "./ThemedText";
-import { ThemedView } from "./ThemedView";
 import { BusinessLogo } from "./BusinessLogo";
 import { useTheme } from "../hooks/useTheme";
-import { Spacing, BorderRadius, Typography, Shadows } from "../constants/theme";
+import { Spacing, BorderRadius, Typography, Shadows, Fonts } from "../constants/theme";
 import { CollectedCoupon } from "../types";
 
 interface CouponCardProps {
@@ -18,6 +17,15 @@ export function CouponCard({ coupon, onPress }: CouponCardProps) {
   const isExpired = coupon.expiresAt < Date.now();
   const expiresIn = Math.floor((coupon.expiresAt - Date.now()) / (1000 * 60 * 60 * 24));
 
+  const statusColor = coupon.isUsed
+    ? theme.textSecondary
+    : isExpired
+    ? theme.error
+    : theme.success;
+
+  const statusText = coupon.isUsed ? "USED" : isExpired ? "EXPIRED" : `${expiresIn}d LEFT`;
+  const statusIcon = coupon.isUsed ? "check" : isExpired ? "x" : "clock";
+
   return (
     <Pressable
       onPress={onPress}
@@ -25,59 +33,70 @@ export function CouponCard({ coupon, onPress }: CouponCardProps) {
         styles.container,
         {
           backgroundColor: theme.backgroundDefault,
-          borderColor: coupon.isUsed ? theme.border : theme.primary,
-          opacity: pressed ? 0.8 : 1,
+          borderColor: coupon.isUsed ? theme.border : theme.primary + "40",
+          opacity: pressed ? 0.85 : coupon.isUsed ? 0.6 : 1,
         },
-        Shadows.card,
+        !coupon.isUsed && !isExpired && Shadows.card,
       ]}
     >
-      <View style={styles.header}>
-        <BusinessLogo
-          businessName={coupon.businessName}
-          logoUrl={coupon.businessLogo}
-          size={40}
-        />
-        <View
-          style={[
-            styles.badge,
-            {
-              backgroundColor: coupon.isUsed
-                ? theme.border
-                : isExpired
-                  ? theme.error
-                  : theme.success,
-            },
-          ]}
-        >
-          <ThemedText style={styles.badgeText}>
-            {coupon.isUsed ? "USED" : isExpired ? "EXPIRED" : `${expiresIn}d`}
-          </ThemedText>
+      {/* Decorative notch cutouts */}
+      <View style={[styles.notchLeft, { backgroundColor: theme.backgroundRoot }]} />
+      <View style={[styles.notchRight, { backgroundColor: theme.backgroundRoot }]} />
+
+      <View style={styles.topSection}>
+        <View style={styles.headerRow}>
+          <BusinessLogo
+            businessName={coupon.businessName}
+            logoUrl={coupon.businessLogo}
+            size={44}
+          />
+          <View style={styles.headerInfo}>
+            <ThemedText
+              style={[styles.businessName, { color: theme.textSecondary }]}
+              numberOfLines={1}
+            >
+              {coupon.businessName}
+            </ThemedText>
+            <ThemedText
+              type="h4"
+              style={styles.couponTitle}
+              numberOfLines={1}
+            >
+              {coupon.title}
+            </ThemedText>
+          </View>
+          <View style={[styles.statusPill, { backgroundColor: statusColor + "18" }]}>
+            <Feather name={statusIcon as any} size={12} color={statusColor} />
+            <ThemedText style={[styles.statusText, { color: statusColor }]}>
+              {statusText}
+            </ThemedText>
+          </View>
         </View>
       </View>
 
-      <ThemedText type="h3" style={styles.title} numberOfLines={1}>
-        {coupon.title}
-      </ThemedText>
-      <ThemedText
-        style={[styles.business, { color: theme.textSecondary }]}
-        numberOfLines={1}
-      >
-        {coupon.businessName}
-      </ThemedText>
+      {/* Perforated line */}
+      <View style={styles.perforation}>
+        {Array.from({ length: 20 }).map((_, i) => (
+          <View
+            key={i}
+            style={[styles.perfDot, { backgroundColor: theme.border }]}
+          />
+        ))}
+      </View>
 
-      <View style={styles.footer}>
+      <View style={styles.bottomSection}>
         <ThemedText
-          style={[styles.value, { color: theme.primary }]}
-          numberOfLines={1}
+          style={[styles.value, { color: theme.primary, fontFamily: Fonts?.display }]}
         >
           {coupon.value}
         </ThemedText>
-        <ThemedText
-          style={[styles.code, { color: theme.textSecondary }]}
-          numberOfLines={1}
-        >
-          {coupon.code}
-        </ThemedText>
+        <View style={[styles.codeBox, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
+          <ThemedText
+            style={[styles.codeText, { color: theme.text, fontFamily: Fonts?.mono }]}
+          >
+            {coupon.code}
+          </ThemedText>
+        </View>
       </View>
     </Pressable>
   );
@@ -85,45 +104,100 @@ export function CouponCard({ coupon, onPress }: CouponCardProps) {
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1.5,
+    marginBottom: Spacing.lg,
+    overflow: "hidden",
+  },
+  notchLeft: {
+    position: "absolute",
+    left: -10,
+    top: "50%",
+    marginTop: -10,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    zIndex: 2,
+  },
+  notchRight: {
+    position: "absolute",
+    right: -10,
+    top: "50%",
+    marginTop: -10,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    zIndex: 2,
+  },
+  topSection: {
     padding: Spacing.lg,
-    borderWidth: 1,
-    marginBottom: Spacing.md,
+    paddingBottom: Spacing.md,
   },
-  header: {
+  headerRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: Spacing.md,
+    gap: Spacing.md,
   },
-  badge: {
+  headerInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  businessName: {
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  couponTitle: {
+    fontSize: 17,
+  },
+  statusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.xs,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
   },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#FFF",
+  statusText: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.8,
   },
-  title: {
-    marginBottom: Spacing.xs,
+  perforation: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: Spacing.lg,
+    marginVertical: 2,
   },
-  business: {
-    fontSize: Typography.caption.fontSize,
-    marginBottom: Spacing.md,
+  perfDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    opacity: 0.4,
   },
-  footer: {
+  bottomSection: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    padding: Spacing.lg,
+    paddingTop: Spacing.md,
   },
   value: {
-    fontSize: Typography.h3.fontSize,
-    fontWeight: "700",
+    fontSize: 28,
+    fontWeight: "800",
+    letterSpacing: -0.5,
   },
-  code: {
-    fontSize: Typography.caption.fontSize,
-    fontFamily: "monospace",
+  codeBox: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderStyle: "dashed",
+  },
+  codeText: {
+    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: 2,
   },
 });

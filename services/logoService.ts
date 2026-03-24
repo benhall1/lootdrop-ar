@@ -30,20 +30,4 @@ export class LogoService {
     return `https://logo.clearbit.com/${domain}.com`;
   }
 
-  static getFallbackIcon(businessName: string): string {
-    const colors = [
-      "FF6B35",
-      "F7931E",
-      "26C6DA",
-      "9C27B0",
-      "4CAF50",
-      "FF5722",
-    ];
-    const colorIndex = businessName.charCodeAt(0) % colors.length;
-    const bgColor = colors[colorIndex];
-
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(
-      businessName
-    )}&background=${bgColor}&color=fff&size=128&bold=true`;
-  }
 }

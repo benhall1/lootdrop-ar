@@ -2,24 +2,109 @@ import React, { useState, useEffect } from "react";
 import { View, StyleSheet, Pressable, Image, Alert, Modal } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { ScreenScrollView } from "../components/ScreenScrollView";
 import { ThemedText } from "../components/ThemedText";
 import { Button } from "../components/Button";
 import { useTheme } from "../hooks/useTheme";
-import { Spacing, BorderRadius, Layout } from "../constants/theme";
+import { Spacing, BorderRadius, Layout, Shadows, Fonts } from "../constants/theme";
 import { AuthService, User } from "../services/authService";
 import { StorageService } from "../services/storageService";
+import { useAuth } from "../App";
 import ChatScreen from "./ChatScreen";
 
+function StatBadge({
+  icon,
+  value,
+  label,
+  color,
+}: {
+  icon: string;
+  value: string;
+  label: string;
+  color: string;
+}) {
+  const { theme } = useTheme();
+  return (
+    <View style={[statStyles.item, { backgroundColor: color + "12" }]}>
+      <View style={[statStyles.iconCircle, { backgroundColor: color + "20" }]}>
+        <Feather name={icon as any} size={18} color={color} />
+      </View>
+      <ThemedText style={[statStyles.value, { fontFamily: Fonts?.display }]}>
+        {value}
+      </ThemedText>
+      <ThemedText style={[statStyles.label, { color: theme.textSecondary }]}>
+        {label}
+      </ThemedText>
+    </View>
+  );
+}
+
+const statStyles = StyleSheet.create({
+  item: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: Spacing.lg,
+    borderRadius: BorderRadius.md,
+    gap: Spacing.xs,
+  },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  value: {
+    fontSize: 24,
+    fontWeight: "800",
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: "600",
+    letterSpacing: 0.5,
+  },
+});
+
+function MenuItem({
+  icon,
+  label,
+  onPress,
+}: {
+  icon: string;
+  label: string;
+  onPress: () => void;
+}) {
+  const { theme } = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.menuItem,
+        {
+          backgroundColor: theme.backgroundDefault,
+          borderColor: theme.border,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
+        },
+      ]}
+    >
+      <View style={[styles.menuIconBg, { backgroundColor: theme.backgroundSecondary }]}>
+        <Feather name={icon as any} size={18} color={theme.text} />
+      </View>
+      <ThemedText style={[styles.menuText, { fontFamily: Fonts?.sans }]}>
+        {label}
+      </ThemedText>
+      <Feather name="chevron-right" size={18} color={theme.textSecondary} />
+    </Pressable>
+  );
+}
+
 export default function ProfileScreen() {
+  const { signOut } = useAuth();
   const { theme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [showChatModal, setShowChatModal] = useState(false);
-  const [stats, setStats] = useState({
-    coupons: 0,
-    savings: 0,
-    visits: 0,
-  });
+  const [stats, setStats] = useState({ coupons: 0, savings: 0, visits: 0 });
 
   useEffect(() => {
     loadProfile();
@@ -41,9 +126,16 @@ export default function ProfileScreen() {
     setStats({
       coupons: collectedCoupons.length,
       savings: Math.round(savings),
-      visits: collectedCoupons.filter(c => c.isUsed).length,
+      visits: collectedCoupons.filter((c) => c.isUsed).length,
     });
   };
+
+  const tierConfig = {
+    gold: { label: "GOLD", color: "#FFD54F", emoji: "👑" },
+    silver: { label: "SILVER", color: "#B0BEC5", emoji: "⚡" },
+    bronze: { label: "BRONZE", color: "#FF8A65", emoji: "🔥" },
+  };
+  const tier = tierConfig[user?.avatarTier || "bronze"];
 
   const handleScheduleDrop = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -67,162 +159,106 @@ export default function ProfileScreen() {
       {
         text: "Sign Out",
         style: "destructive",
-        onPress: async () => {
-          await AuthService.signOut();
-          Alert.alert("Signed Out", "Please restart the app to sign in again.");
-        },
+        onPress: () => signOut(),
       },
     ]);
   };
 
   return (
     <ScreenScrollView>
-      <View style={styles.avatarSection}>
-        <Image
-          source={require("../assets/avatars/gold_chest_avatar.png")}
-          style={styles.avatar}
-        />
-        <ThemedText type="h2" style={styles.username}>
+      {/* Avatar & Name */}
+      <Animated.View entering={FadeInDown.duration(500)} style={styles.avatarSection}>
+        <View style={styles.avatarWrapper}>
+          <View style={[styles.avatarGlow, { backgroundColor: tier.color + "30" }]} />
+          <Image
+            source={require("../assets/avatars/gold_chest_avatar.png")}
+            style={[styles.avatar, { borderColor: tier.color }]}
+          />
+          <View style={[styles.tierBadge, { backgroundColor: tier.color }]}>
+            <ThemedText style={styles.tierText}>
+              {tier.emoji} {tier.label}
+            </ThemedText>
+          </View>
+        </View>
+        <ThemedText
+          type="h2"
+          style={[styles.username, { fontFamily: Fonts?.display }]}
+        >
           {user?.name || "Treasure Hunter"}
         </ThemedText>
-        <ThemedText
-          style={[styles.subtitle, { color: theme.textSecondary }]}
-        >
-          {user?.avatarTier === "gold"
-            ? "Gold Tier Member"
-            : user?.avatarTier === "silver"
-            ? "Silver Tier Member"
-            : "Bronze Tier Member"}
+        <ThemedText style={[styles.email, { color: theme.textSecondary }]}>
+          {user?.email || "Guest Explorer"}
         </ThemedText>
-      </View>
+      </Animated.View>
 
-      <View
-        style={[
-          styles.statsCard,
-          {
-            backgroundColor: theme.backgroundDefault,
-            borderColor: theme.border,
-          },
-        ]}
-      >
-        <View style={styles.statRow}>
-          <View style={styles.statItem}>
-            <Feather name="award" size={24} color={theme.secondary} />
-            <ThemedText type="h3" style={styles.statValue}>
-              {stats.coupons}
-            </ThemedText>
-            <ThemedText
-              style={[styles.statLabel, { color: theme.textSecondary }]}
-            >
-              Coupons
-            </ThemedText>
-          </View>
-          <View style={styles.statItem}>
-            <Feather name="dollar-sign" size={24} color={theme.success} />
-            <ThemedText type="h3" style={styles.statValue}>
-              ${stats.savings}
-            </ThemedText>
-            <ThemedText
-              style={[styles.statLabel, { color: theme.textSecondary }]}
-            >
-              Saved
-            </ThemedText>
-          </View>
-          <View style={styles.statItem}>
-            <Feather name="map-pin" size={24} color={theme.accent} />
-            <ThemedText type="h3" style={styles.statValue}>
-              {stats.visits}
-            </ThemedText>
-            <ThemedText
-              style={[styles.statLabel, { color: theme.textSecondary }]}
-            >
-              Visits
-            </ThemedText>
-          </View>
-        </View>
-      </View>
+      {/* Stats */}
+      <Animated.View entering={FadeInDown.duration(500).delay(100)} style={styles.statsRow}>
+        <StatBadge icon="gift" value={String(stats.coupons)} label="Collected" color={theme.secondary} />
+        <StatBadge icon="dollar-sign" value={`$${stats.savings}`} label="Saved" color={theme.success} />
+        <StatBadge icon="map-pin" value={String(stats.visits)} label="Redeemed" color={theme.accent} />
+      </Animated.View>
 
-      <View
-        style={[
-          styles.merchantCard,
-          {
-            backgroundColor: theme.backgroundDefault,
-            borderColor: theme.primary,
-          },
-        ]}
-      >
-        <View style={styles.merchantHeader}>
-          <Feather name="briefcase" size={24} color={theme.primary} />
-          <ThemedText type="h3" style={styles.merchantTitle}>
-            Merchant Tools
-          </ThemedText>
-        </View>
-        <ThemedText
-          style={[styles.merchantSubtext, { color: theme.textSecondary }]}
-        >
-          Schedule loot drops at your business location to attract customers
-        </ThemedText>
-        <Button onPress={handleScheduleDrop} style={styles.merchantButton}>
-          Schedule Loot Drop
-        </Button>
-      </View>
-
-      <View style={styles.menuSection}>
+      {/* Merchant Card */}
+      <Animated.View entering={FadeInDown.duration(500).delay(200)}>
         <Pressable
+          onPress={handleScheduleDrop}
           style={({ pressed }) => [
-            styles.menuItem,
+            styles.merchantCard,
             {
               backgroundColor: theme.backgroundDefault,
-              opacity: pressed ? 0.7 : 1,
+              borderColor: theme.primary + "40",
+              transform: [{ scale: pressed ? 0.98 : 1 }],
             },
+            Shadows.card,
           ]}
-          onPress={() => Alert.alert("Settings", "Settings screen")}
         >
-          <Feather name="settings" size={20} color={theme.text} />
-          <ThemedText style={styles.menuText}>Settings</ThemedText>
-          <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+          <View style={styles.merchantLeft}>
+            <View style={[styles.merchantIcon, { backgroundColor: theme.primary + "15" }]}>
+              <Feather name="briefcase" size={22} color={theme.primary} />
+            </View>
+            <View style={styles.merchantInfo}>
+              <ThemedText type="h4">Merchant Tools</ThemedText>
+              <ThemedText style={[styles.merchantSub, { color: theme.textSecondary }]}>
+                Schedule loot drops at your location
+              </ThemedText>
+            </View>
+          </View>
+          <Feather name="arrow-right" size={20} color={theme.primary} />
         </Pressable>
+      </Animated.View>
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.menuItem,
-            {
-              backgroundColor: theme.backgroundDefault,
-              opacity: pressed ? 0.7 : 1,
-            },
-          ]}
+      {/* Menu */}
+      <Animated.View entering={FadeInDown.duration(500).delay(300)} style={styles.menuSection}>
+        <MenuItem icon="settings" label="Settings" onPress={() => Alert.alert("Settings", "Settings screen")} />
+        <MenuItem
+          icon="help-circle"
+          label="Help & Support"
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             setShowChatModal(true);
           }}
-        >
-          <Feather name="help-circle" size={20} color={theme.text} />
-          <ThemedText style={styles.menuText}>Help & Support</ThemedText>
-          <Feather name="chevron-right" size={20} color={theme.textSecondary} />
-        </Pressable>
+        />
+        <MenuItem icon="info" label="About" onPress={() => Alert.alert("About", "LootDrop AR v1.0.0")} />
+      </Animated.View>
 
+      {/* Sign Out */}
+      <Animated.View entering={FadeInDown.duration(500).delay(400)}>
         <Pressable
+          onPress={handleSignOut}
           style={({ pressed }) => [
-            styles.menuItem,
+            styles.signOutButton,
             {
-              backgroundColor: theme.backgroundDefault,
+              borderColor: theme.error + "60",
               opacity: pressed ? 0.7 : 1,
             },
           ]}
-          onPress={() => Alert.alert("About", "LootDrop AR v1.0.0")}
         >
-          <Feather name="info" size={20} color={theme.text} />
-          <ThemedText style={styles.menuText}>About</ThemedText>
-          <Feather name="chevron-right" size={20} color={theme.textSecondary} />
+          <Feather name="log-out" size={18} color={theme.error} />
+          <ThemedText style={[styles.signOutText, { color: theme.error }]}>
+            Sign Out
+          </ThemedText>
         </Pressable>
-      </View>
-
-      <Button
-        onPress={handleSignOut}
-        style={[styles.signOutButton, { backgroundColor: theme.error }]}
-      >
-        Sign Out
-      </Button>
+      </Animated.View>
 
       <Modal
         visible={showChatModal}
@@ -231,7 +267,15 @@ export default function ProfileScreen() {
         onRequestClose={() => setShowChatModal(false)}
       >
         <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
-          <View style={[styles.modalHeader, { backgroundColor: theme.backgroundDefault, borderBottomColor: theme.border }]}>
+          <View
+            style={[
+              styles.modalHeader,
+              {
+                backgroundColor: theme.backgroundDefault,
+                borderBottomColor: theme.border,
+              },
+            ]}
+          >
             <ThemedText type="h3">Help & Support</ThemedText>
             <Pressable
               onPress={() => {
@@ -255,60 +299,74 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: Spacing["3xl"],
   },
+  avatarWrapper: {
+    alignItems: "center",
+    marginBottom: Spacing.lg,
+  },
+  avatarGlow: {
+    position: "absolute",
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+  },
   avatar: {
     width: 100,
     height: 100,
-    borderRadius: 50,
-    marginBottom: Spacing.lg,
+    borderRadius: 32,
+    borderWidth: 3,
+  },
+  tierBadge: {
+    position: "absolute",
+    bottom: -8,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+  },
+  tierText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#000",
+    letterSpacing: 1,
   },
   username: {
-    marginBottom: Spacing.xs,
+    marginBottom: 2,
   },
-  subtitle: {
+  email: {
     fontSize: 14,
   },
-  statsCard: {
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    borderWidth: 1,
-    marginBottom: Spacing["2xl"],
-  },
-  statRow: {
+  statsRow: {
     flexDirection: "row",
-    justifyContent: "space-around",
-  },
-  statItem: {
-    alignItems: "center",
-    gap: Spacing.xs,
-  },
-  statValue: {
-    marginTop: Spacing.xs,
-  },
-  statLabel: {
-    fontSize: 12,
+    gap: Spacing.sm,
+    marginBottom: Spacing["2xl"],
   },
   merchantCard: {
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.md,
-    borderWidth: 2,
-    marginBottom: Spacing["2xl"],
-  },
-  merchantHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: Spacing.sm,
-    gap: Spacing.sm,
+    justifyContent: "space-between",
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1.5,
+    marginBottom: Spacing["2xl"],
   },
-  merchantTitle: {
+  merchantLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.md,
     flex: 1,
   },
-  merchantSubtext: {
-    fontSize: 14,
-    marginBottom: Spacing.lg,
-    lineHeight: 20,
+  merchantIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  merchantButton: {
-    marginTop: Spacing.sm,
+  merchantInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  merchantSub: {
+    fontSize: 13,
   },
   menuSection: {
     marginBottom: Spacing["2xl"],
@@ -317,16 +375,37 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: Spacing.lg,
+    padding: Spacing.md,
     borderRadius: BorderRadius.md,
+    borderWidth: 1,
     gap: Spacing.md,
+  },
+  menuIconBg: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
   },
   menuText: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: "600",
   },
   signOutButton: {
-    marginTop: Spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    height: 48,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    marginBottom: Spacing["3xl"],
+  },
+  signOutText: {
+    fontSize: 15,
+    fontWeight: "700",
   },
   modalHeader: {
     flexDirection: "row",

@@ -9,14 +9,16 @@ import { CategoryChip } from "../components/CategoryChip";
 import { CountdownTimer } from "../components/CountdownTimer";
 import { BusinessLogo } from "../components/BusinessLogo";
 import { Button } from "../components/Button";
-import { SimpleMapView } from "../components/SimpleMapView";
+import { MapView } from "../components/MapView";
 import { useTheme } from "../hooks/useTheme";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Spacing, BorderRadius } from "../constants/theme";
 import { mockLootBoxes } from "../services/mockData";
+import { LootBoxService } from "../services/lootBoxService";
 import { LocationService } from "../services/locationService";
 import { StorageService } from "../services/storageService";
 import { LocationCategory, LootBox, UserLocation } from "../types";
+import { calculateDistance } from "../services/geolocation";
 
 function DistanceBadge({ distance, theme }: { distance: number; theme: any }) {
   return (
@@ -34,25 +36,6 @@ function DistanceBadge({ distance, theme }: { distance: number; theme: any }) {
   );
 }
 
-function calculateDistance(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
 export default function MapScreen({ navigation }: any) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -60,28 +43,25 @@ export default function MapScreen({ navigation }: any) {
   const mapRef = useRef<any>(null);
   const [selectedCategory, setSelectedCategory] = useState<LocationCategory | null>(null);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [lootBoxes, setLootBoxes] = useState<LootBox[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [selectedLootBox, setSelectedLootBox] = useState<LootBox | null>(null);
   const [mapRegion, setMapRegion] = useState<any>(null);
   const categories: LocationCategory[] = ["restaurant", "retail", "entertainment", "services"];
 
   const filteredLootBoxes = selectedCategory
-    ? mockLootBoxes.filter((box) => box.category === selectedCategory)
-    : mockLootBoxes;
+    ? lootBoxes.filter((box) => box.category === selectedCategory)
+    : lootBoxes;
 
   const sortedLootBoxes = userLocation
     ? [...filteredLootBoxes].sort((a, b) => {
         const distA = calculateDistance(
-          userLocation.latitude,
-          userLocation.longitude,
-          a.latitude,
-          a.longitude
+          userLocation,
+          { latitude: a.latitude, longitude: a.longitude }
         );
         const distB = calculateDistance(
-          userLocation.latitude,
-          userLocation.longitude,
-          b.latitude,
-          b.longitude
+          userLocation,
+          { latitude: b.latitude, longitude: b.longitude }
         );
         return distA - distB;
       })
@@ -118,6 +98,23 @@ export default function MapScreen({ navigation }: any) {
     loadFavorites();
   }, []);
 
+  /** Fetch loot boxes from Supabase, fall back to mock data */
+  useEffect(() => {
+    const fetchLootBoxes = async () => {
+      try {
+        const boxes = userLocation
+          ? await LootBoxService.getNearby(userLocation.latitude, userLocation.longitude)
+          : await LootBoxService.getAll(selectedCategory || undefined);
+
+        setLootBoxes(boxes.length > 0 ? boxes : mockLootBoxes);
+      } catch {
+        setLootBoxes(mockLootBoxes);
+      }
+    };
+
+    fetchLootBoxes();
+  }, [userLocation, selectedCategory]);
+
   const handleToggleFavorite = async (lootBoxId: string) => {
     await StorageService.toggleFavorite(lootBoxId);
     const favs = await StorageService.getFavoriteLocations();
@@ -129,23 +126,27 @@ export default function MapScreen({ navigation }: any) {
     const destination = `${lootBox.latitude},${lootBox.longitude}`;
     const label = encodeURIComponent(lootBox.businessName);
 
-    let url = "";
-    if (Platform.OS === "ios") {
+    let url: string;
+    if (Platform.OS === "web") {
+      url = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+    } else if (Platform.OS === "ios") {
       url = `maps://app?daddr=${destination}&q=${label}`;
     } else {
       url = `google.navigation:q=${destination}`;
     }
 
-    Linking.canOpenURL(url).then((supported) => {
-      if (supported) {
-        Linking.openURL(url);
-      } else {
-        const browserUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
-        Linking.openURL(browserUrl);
-      }
-    });
-
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (Platform.OS === "web") {
+      window.open(url, "_blank");
+    } else {
+      Linking.canOpenURL(url).then((supported) => {
+        if (supported) {
+          Linking.openURL(url);
+        } else {
+          Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${destination}`);
+        }
+      });
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
   };
 
   return (
@@ -187,7 +188,7 @@ export default function MapScreen({ navigation }: any) {
       </ScrollView>
 
       <View style={styles.mapContainer}>
-        <SimpleMapView
+        <MapView
           lootBoxes={filteredLootBoxes}
           userLocation={userLocation}
           onLootBoxPress={(lootBox) => {
@@ -225,10 +226,8 @@ export default function MapScreen({ navigation }: any) {
                 {userLocation && (
                   <DistanceBadge
                     distance={calculateDistance(
-                      userLocation.latitude,
-                      userLocation.longitude,
-                      selectedLootBox.latitude,
-                      selectedLootBox.longitude
+                      userLocation,
+                      { latitude: selectedLootBox.latitude, longitude: selectedLootBox.longitude }
                     )}
                     theme={theme}
                   />

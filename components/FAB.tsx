@@ -26,7 +26,7 @@ export function FAB({ icon, onPress, style }: FABProps) {
         styles.container,
         {
           backgroundColor: theme.primary,
-          transform: [{ scale: pressed ? 0.95 : 1 }],
+          transform: [{ scale: pressed ? 0.9 : 1 }],
         },
         Shadows.fab,
         style,

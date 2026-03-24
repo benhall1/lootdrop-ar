@@ -1,16 +1,29 @@
 import React, { useState } from "react";
 import { View, StyleSheet } from "react-native";
 import { Image } from "expo-image";
-import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "./ThemedText";
 import { useTheme } from "../hooks/useTheme";
-import { LogoService } from "../services/logoService";
+import { Fonts } from "../constants/theme";
 
 interface BusinessLogoProps {
   businessName: string;
   logoUrl?: string;
   size?: number;
   style?: any;
+}
+
+const LOGO_COLORS = [
+  "#FF5722", "#E91E63", "#9C27B0", "#673AB7",
+  "#3F51B5", "#2196F3", "#00BCD4", "#009688",
+  "#4CAF50", "#FF9800", "#795548", "#607D8B",
+];
+
+function getColorForName(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return LOGO_COLORS[Math.abs(hash) % LOGO_COLORS.length];
 }
 
 function getInitials(name: string): string {
@@ -32,6 +45,7 @@ export function BusinessLogo({
 
   if (logoFailed || !logoUrl) {
     const initials = getInitials(businessName);
+    const bgColor = getColorForName(businessName);
 
     return (
       <View
@@ -40,24 +54,23 @@ export function BusinessLogo({
           {
             width: size,
             height: size,
-            borderRadius: size / 2,
-            backgroundColor: theme.primary,
+            borderRadius: size * 0.3,
+            backgroundColor: bgColor,
           },
           style,
         ]}
       >
-        <View style={styles.fallbackContent}>
-          <Feather name="briefcase" size={size * 0.3} color="#FFF" style={styles.fallbackIcon} />
-          <ThemedText
-            style={{
-              color: "#FFFFFF",
-              fontSize: size * 0.35,
-              fontWeight: "700",
-            }}
-          >
-            {initials}
-          </ThemedText>
-        </View>
+        <ThemedText
+          style={{
+            color: "#FFFFFF",
+            fontSize: size * 0.38,
+            fontWeight: "800",
+            fontFamily: Fonts?.sans,
+            letterSpacing: 0.5,
+          }}
+        >
+          {initials}
+        </ThemedText>
       </View>
     );
   }
@@ -70,7 +83,7 @@ export function BusinessLogo({
         {
           width: size,
           height: size,
-          borderRadius: size / 2,
+          borderRadius: size * 0.3,
         },
         style,
       ]}
@@ -88,14 +101,5 @@ const styles = StyleSheet.create({
   fallback: {
     justifyContent: "center",
     alignItems: "center",
-    position: "relative",
-  },
-  fallbackContent: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  fallbackIcon: {
-    position: "absolute",
-    opacity: 0.2,
   },
 });

@@ -7,7 +7,7 @@ import { ThemedText } from "../components/ThemedText";
 import { useTheme } from "../hooks/useTheme";
 import { Spacing, BorderRadius } from "../constants/theme";
 import { ApiService } from "../services/apiService";
-import { UserService, User } from "../services/userService";
+import { AuthService, User } from "../services/authService";
 
 interface Price {
   id: string;
@@ -143,16 +143,18 @@ export default function SubscriptionScreen() {
       setProducts([]);
       setIsPremium(false);
 
-      let currentUser = await UserService.getUser();
-      
+      let currentUser = await AuthService.getCurrentUser();
+
       if (!currentUser) {
         currentUser = {
-          id: UserService.generateGuestId(),
-          email: "guest@lootdrop.app",
+          id: AuthService.generateGuestId(),
           name: "Guest User",
+          email: "guest@lootdrop.app",
+          provider: "guest" as const,
+          avatarTier: "bronze" as const,
           isPremium: false,
         };
-        await UserService.saveUser(currentUser);
+        await AuthService.saveUser(currentUser);
       }
 
       setUser(currentUser);

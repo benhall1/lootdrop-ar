@@ -9,7 +9,7 @@ import Animated, {
 
 import { ThemedText } from "@/components/ThemedText";
 import { useTheme } from "@/hooks/useTheme";
-import { BorderRadius, Spacing } from "@/constants/theme";
+import { BorderRadius, Spacing, Shadows, Fonts } from "@/constants/theme";
 
 interface ButtonProps {
   onPress?: () => void;
@@ -19,11 +19,10 @@ interface ButtonProps {
 }
 
 const springConfig: WithSpringConfig = {
-  damping: 15,
-  mass: 0.3,
-  stiffness: 150,
-  overshootClamping: true,
-  energyThreshold: 0.001,
+  damping: 12,
+  mass: 0.4,
+  stiffness: 200,
+  overshootClamping: false,
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -43,7 +42,7 @@ export function Button({
 
   const handlePressIn = () => {
     if (!disabled) {
-      scale.value = withSpring(0.98, springConfig);
+      scale.value = withSpring(0.95, springConfig);
     }
   };
 
@@ -62,16 +61,17 @@ export function Button({
       style={[
         styles.button,
         {
-          backgroundColor: theme.link,
-          opacity: disabled ? 0.5 : 1,
+          backgroundColor: theme.primary,
+          opacity: disabled ? 0.4 : 1,
         },
+        Shadows.fab,
         style,
         animatedStyle,
       ]}
     >
       <ThemedText
         type="body"
-        style={[styles.buttonText, { color: theme.buttonText }]}
+        style={[styles.buttonText, { color: theme.buttonText, fontFamily: Fonts?.sans }]}
       >
         {children}
       </ThemedText>
@@ -82,11 +82,13 @@ export function Button({
 const styles = StyleSheet.create({
   button: {
     height: Spacing.buttonHeight,
-    borderRadius: BorderRadius.full,
+    borderRadius: BorderRadius.md,
     alignItems: "center",
     justifyContent: "center",
   },
   buttonText: {
-    fontWeight: "600",
+    fontWeight: "700",
+    fontSize: 16,
+    letterSpacing: 0.5,
   },
 });

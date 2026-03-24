@@ -1,4 +1,4 @@
-import { LootBox, CollectedCoupon } from "../types";
+import { LootBox } from "../types";
 import { LogoService } from "./logoService";
 
 const now = Date.now();
@@ -140,31 +140,3 @@ export const mockLootBoxes: LootBox[] = [
   },
 ];
 
-export const mockCollectedCoupons: CollectedCoupon[] = [
-  {
-    id: "c10",
-    code: "TACO25",
-    title: "25% Off Tacos",
-    description: "Discount on all taco orders",
-    discountType: "percentage",
-    value: "25%",
-    expiresAt: now + 5 * oneDay,
-    businessName: "Taco Heaven",
-    businessLogo: LogoService.getBusinessLogo("Taco Heaven"),
-    collectedAt: now - 2 * oneDay,
-    isUsed: false,
-  },
-  {
-    id: "c11",
-    code: "COFFEE10",
-    title: "$10 Off Coffee Order",
-    description: "Save on coffee purchases",
-    discountType: "fixed",
-    value: "$10",
-    expiresAt: now + 2 * oneDay,
-    businessName: "Morning Brew",
-    businessLogo: LogoService.getBusinessLogo("Morning Brew"),
-    collectedAt: now - 3 * oneDay,
-    isUsed: false,
-  },
-];

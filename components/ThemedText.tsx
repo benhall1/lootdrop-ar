@@ -1,7 +1,7 @@
-import { Text, type TextProps } from "react-native";
+import { Text, type TextProps, Platform } from "react-native";
 
 import { useTheme } from "@/hooks/useTheme";
-import { Typography } from "@/constants/theme";
+import { Typography, Fonts } from "@/constants/theme";
 
 export type ThemedTextProps = TextProps & {
   lightColor?: string;
@@ -19,18 +19,9 @@ export function ThemedText({
   const { theme, isDark } = useTheme();
 
   const getColor = () => {
-    if (isDark && darkColor) {
-      return darkColor;
-    }
-
-    if (!isDark && lightColor) {
-      return lightColor;
-    }
-
-    if (type === "link") {
-      return theme.link;
-    }
-
+    if (isDark && darkColor) return darkColor;
+    if (!isDark && lightColor) return lightColor;
+    if (type === "link") return theme.link;
     return theme.text;
   };
 
@@ -55,7 +46,20 @@ export function ThemedText({
     }
   };
 
+  // Headers get display font, body text gets sans font
+  const fontFamily =
+    type === "h1" || type === "h2" || type === "h3"
+      ? Fonts?.display
+      : Fonts?.sans;
+
   return (
-    <Text style={[{ color: getColor() }, getTypeStyle(), style]} {...rest} />
+    <Text
+      style={[
+        { color: getColor(), fontFamily },
+        getTypeStyle(),
+        style,
+      ]}
+      {...rest}
+    />
   );
 }

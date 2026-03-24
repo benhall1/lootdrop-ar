@@ -1,8 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from "react-native-reanimated";
 import { ThemedText } from "./ThemedText";
 import { useTheme } from "../hooks/useTheme";
-import { Fonts, Typography, BorderRadius, Spacing } from "../constants/theme";
+import { Fonts, Typography, BorderRadius, Spacing, Shadows } from "../constants/theme";
 
 interface CountdownTimerProps {
   targetTime: number;
@@ -13,6 +20,7 @@ export function CountdownTimer({ targetTime, style }: CountdownTimerProps) {
   const { theme } = useTheme();
   const [timeLeft, setTimeLeft] = useState("");
   const [isUrgent, setIsUrgent] = useState(false);
+  const pulse = useSharedValue(1);
 
   useEffect(() => {
     const updateTimer = () => {
@@ -20,7 +28,7 @@ export function CountdownTimer({ targetTime, style }: CountdownTimerProps) {
       const diff = targetTime - now;
 
       if (diff <= 0) {
-        setTimeLeft("LIVE");
+        setTimeLeft("LIVE!");
         setIsUrgent(false);
         return;
       }
@@ -46,14 +54,40 @@ export function CountdownTimer({ targetTime, style }: CountdownTimerProps) {
     return () => clearInterval(interval);
   }, [targetTime]);
 
+  useEffect(() => {
+    if (isUrgent) {
+      pulse.value = withRepeat(
+        withSequence(
+          withTiming(1.08, { duration: 500 }),
+          withTiming(1, { duration: 500 })
+        ),
+        -1,
+        false
+      );
+    } else {
+      pulse.value = 1;
+    }
+  }, [isUrgent]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulse.value }],
+  }));
+
+  const isLive = timeLeft === "LIVE!";
+
   return (
-    <View
+    <Animated.View
       style={[
         styles.container,
         {
-          backgroundColor: timeLeft === "LIVE" ? theme.success : theme.secondary,
+          backgroundColor: isLive
+            ? theme.success
+            : isUrgent
+            ? theme.error
+            : theme.secondary,
         },
-        isUrgent && styles.pulsing,
+        isLive && Shadows.accentGlow,
+        animatedStyle,
         style,
       ]}
     >
@@ -61,29 +95,27 @@ export function CountdownTimer({ targetTime, style }: CountdownTimerProps) {
         style={[
           styles.text,
           {
-            fontFamily: Fonts.mono,
-            color: "#000",
+            fontFamily: Fonts?.mono,
+            color: isLive ? "#FFF" : "#000",
           },
         ]}
       >
-        {timeLeft}
+        {isLive ? "⚡ LIVE!" : `⏱ ${timeLeft}`}
       </ThemedText>
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
+    paddingVertical: Spacing.xs + 2,
     borderRadius: BorderRadius.full,
     alignSelf: "flex-start",
   },
   text: {
-    fontSize: Typography.caption.fontSize,
-    fontWeight: "700",
-  },
-  pulsing: {
-    opacity: 0.9,
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.5,
   },
 });

@@ -1,10 +1,10 @@
 import React from "react";
-import { Pressable, StyleSheet } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { ThemedText } from "./ThemedText";
 import { useTheme } from "../hooks/useTheme";
-import { Spacing, BorderRadius, Layout } from "../constants/theme";
+import { Spacing, BorderRadius, Layout, Fonts } from "../constants/theme";
 import { LocationCategory } from "../types";
 
 interface CategoryChipProps {
@@ -13,22 +13,16 @@ interface CategoryChipProps {
   onPress: () => void;
 }
 
-const categoryIcons: Record<LocationCategory, string> = {
-  restaurant: "coffee",
-  retail: "shopping-bag",
-  entertainment: "film",
-  services: "tool",
-};
-
-const categoryLabels: Record<LocationCategory, string> = {
-  restaurant: "Food",
-  retail: "Retail",
-  entertainment: "Fun",
-  services: "Services",
+const categoryConfig: Record<LocationCategory, { icon: string; label: string; emoji: string }> = {
+  restaurant: { icon: "coffee", label: "Food", emoji: "🍕" },
+  retail: { icon: "shopping-bag", label: "Retail", emoji: "🛍" },
+  entertainment: { icon: "film", label: "Fun", emoji: "🎮" },
+  services: { icon: "tool", label: "Services", emoji: "⚡" },
 };
 
 export function CategoryChip({ category, selected, onPress }: CategoryChipProps) {
   const { theme } = useTheme();
+  const config = categoryConfig[category];
 
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -42,25 +36,23 @@ export function CategoryChip({ category, selected, onPress }: CategoryChipProps)
         styles.container,
         {
           backgroundColor: selected ? theme.primary : theme.backgroundSecondary,
-          opacity: pressed ? 0.7 : 1,
+          borderColor: selected ? theme.primary : theme.border,
+          opacity: pressed ? 0.8 : 1,
+          transform: [{ scale: pressed ? 0.95 : 1 }],
         },
       ]}
     >
-      <Feather
-        name={categoryIcons[category] as any}
-        size={Layout.categoryIconSize}
-        color={selected ? "#FFF" : theme.textSecondary}
-        style={styles.icon}
-      />
+      <ThemedText style={styles.emoji}>{config.emoji}</ThemedText>
       <ThemedText
         style={[
           styles.label,
           {
-            color: selected ? "#FFF" : theme.textSecondary,
+            color: selected ? "#FFF" : theme.text,
+            fontFamily: Fonts?.sans,
           },
         ]}
       >
-        {categoryLabels[category]}
+        {config.label}
       </ThemedText>
     </Pressable>
   );
@@ -71,15 +63,18 @@ const styles = StyleSheet.create({
     height: Layout.categoryChipHeight,
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.lg,
     borderRadius: BorderRadius.full,
     marginRight: Spacing.sm,
+    borderWidth: 1.5,
+    gap: Spacing.xs,
   },
-  icon: {
-    marginRight: Spacing.xs,
+  emoji: {
+    fontSize: 16,
   },
   label: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
+    letterSpacing: 0.3,
   },
 });
