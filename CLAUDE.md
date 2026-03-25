@@ -63,37 +63,47 @@ Fly.io (Express API)
 - **Eng Review:** COMPLETE (2026-03-23) — CLEAR, 2 issues resolved, 0 critical gaps
 - **Design Review:** NOT DONE — optional, run `/plan-design-review` for radar view UX
 
-**Next step: Start implementing Wave 1. Run `/ship` when done.**
+**Next step: Create Supabase project, add credentials, and deploy. See `supabase/README.md`.**
 
-## Implementation Plan (Two Waves)
+## Implementation Status
 
-### Wave 1: Foundation (~2 hours CC)
-Simplified architecture: PWA (Vercel) + Supabase (everything). No Fly.io needed.
+### Wave 1: Foundation — DONE (code complete, needs Supabase project)
 
-1. Bug fixes: delete dead code, fix Typography, merge user services, fix sign-out, dedupe calculateDistance
-2. Set up Supabase project: create DB, enable PostGIS, run schema
-3. Create supabaseClient.ts
-4. Refactor authService.ts → Supabase Auth wrapper
-5. Update App.tsx → Supabase session listener
-6. Update LoginScreen → Google + Email sign-in
-7. Create lootBoxService.ts (replaces mockData.ts)
-8. Create Edge Function: claim_loot (distance validation + claim insert)
-9. Create claimService.ts (client-side claim flow)
-10. Replace SimpleMapView → Leaflet map component
-11. Update MapScreen, CollectionScreen to use Supabase data
-12. Create Edge Functions: stripe_webhook + create_checkout
-13. Set up Jest + Playwright, write tests
-14. Deploy: Expo Web → Vercel
+| # | Task | Status |
+|---|------|--------|
+| 1 | Bug fixes, dead code cleanup | DONE |
+| 2 | Supabase project setup | BLOCKED — needs credentials |
+| 3 | supabaseClient.ts | DONE |
+| 4 | authService.ts → Supabase Auth | DONE |
+| 5 | App.tsx → Supabase session listener | DONE |
+| 6 | LoginScreen → Google + Email | DONE |
+| 7 | lootBoxService.ts | DONE |
+| 8 | claim_loot RPC function | DONE (PostgreSQL, not Edge Function) |
+| 9 | claimService.ts | DONE |
+| 10 | Leaflet map | DONE |
+| 11 | Screens wired to Supabase (with mock fallback) | DONE |
+| 12 | Stripe Edge Functions | TODO |
+| 13 | Jest tests | DONE (services + geolocation) |
+| 14 | Deployed to Vercel | DONE |
 
-### Wave 2: Features (~4 hours CC)
-Add Fly.io if needed for push dispatch.
+### Wave 2: Features — DONE (frontend complete, uses mock data)
 
-1. Radar View (animated discovery)
-2. Merchant self-serve (create drops, view stats)
-3. Web Push + email notifications
-4. Social (leaderboards, share-a-deal, activity feed)
-5. Sound design + haptic polish
-6. Streak rewards + gamification loop
+| # | Task | Status |
+|---|------|--------|
+| 1 | Radar View | DONE |
+| 2 | Merchant self-serve | DONE (UI, needs Supabase) |
+| 3 | Web Push notifications | TODO |
+| 4 | Social (leaderboard, activity, badges) | DONE (UI, mock data) |
+| 5 | Sound design + haptics | DONE |
+| 6 | Gamification (XP, streaks, tiers) | DONE |
+
+### Remaining Work
+
+- **Create Supabase project** — run migrations + seed data (see `supabase/README.md`)
+- **Add Vercel env vars** — EXPO_PUBLIC_SUPABASE_URL + EXPO_PUBLIC_SUPABASE_ANON_KEY
+- **Stripe Edge Functions** — webhook handler + checkout session creation
+- **Web Push notifications** — service worker + notification dispatch
+- **Wire leaderboard/social** to real Supabase data (currently mock)
 
 ## Database Schema (Supabase PostgreSQL + PostGIS)
 
@@ -103,13 +113,14 @@ Key decisions:
 - Distance check: ST_Distance < 100m
 - Idempotency: UNIQUE(user_id, loot_box_id) prevents double-claims
 
-## Known Bugs to Fix
+## Known Bugs — ALL FIXED
 
-1. `authService.ts` and `userService.ts` both use `@lootdrop_user` AsyncStorage key with DIFFERENT data shapes — merge into one service
-2. `ThemedText.tsx` references `Typography.h4`, `.small`, `.link` which don't exist in `theme.ts` — add them
-3. `calculateDistance` duplicated in `MapScreen.tsx` and `services/geolocation.ts` — consolidate
-4. Sign-out tells user to "restart the app" instead of navigating to login — fix state management
-5. Dead code to delete: `MainTabNavigator26.tsx`, `couponService.ts`, `Card.tsx`, `HeaderTitle.tsx`, `screenOptions.ts`, `mockCollectedCoupons` export, `logoService.getFallbackIcon()`
+1. ~~`authService.ts` / `userService.ts` AsyncStorage conflict~~ — merged into single authService
+2. ~~`ThemedText.tsx` missing Typography entries~~ — h4, small, link added to theme.ts
+3. ~~`calculateDistance` duplicated~~ — consolidated in geolocation.ts
+4. ~~Sign-out "restart app" message~~ — App.tsx auth context handles navigation
+5. ~~Dead code files~~ — all deleted (MainTabNavigator26, couponService, Card, HeaderTitle, screenOptions)
+6. ~~MerchantScreen buttons blank~~ — fixed title prop → children syntax
 
 ## Existing Code Worth Reusing
 

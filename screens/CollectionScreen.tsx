@@ -10,6 +10,8 @@ import { CouponCard } from "../components/CouponCard";
 import { useTheme } from "../hooks/useTheme";
 import { Spacing, BorderRadius, Fonts, WebShadows, Gradients } from "../constants/theme";
 import { StorageService } from "../services/storageService";
+import { ClaimService } from "../services/claimService";
+import { isSupabaseConfigured } from "../services/supabaseClient";
 import { CollectedCoupon } from "../types";
 
 export default function CollectionScreen() {
@@ -23,6 +25,14 @@ export default function CollectionScreen() {
   );
 
   const loadCoupons = async () => {
+    // Use Supabase when configured, fall back to local storage
+    if (isSupabaseConfigured) {
+      const claimed = await ClaimService.getClaimedCoupons();
+      if (claimed.length > 0) {
+        setCoupons(claimed);
+        return;
+      }
+    }
     const collected = await StorageService.getCollectedCoupons();
     setCoupons(collected);
   };
@@ -57,7 +67,11 @@ export default function CollectionScreen() {
           {
             text: "Mark as Used",
             onPress: async () => {
-              await StorageService.markCouponAsUsed(coupon.id);
+              if (isSupabaseConfigured) {
+                await ClaimService.markAsUsed(coupon.id);
+              } else {
+                await StorageService.markCouponAsUsed(coupon.id);
+              }
               await loadCoupons();
               Alert.alert("Success", "Coupon marked as used!");
             },
