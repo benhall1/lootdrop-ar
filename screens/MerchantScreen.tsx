@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -6,6 +6,7 @@ import {
   Alert,
   TextInput,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -15,50 +16,9 @@ import { ThemedText } from "../components/ThemedText";
 import { Button } from "../components/Button";
 import { useTheme } from "../hooks/useTheme";
 import { Spacing, BorderRadius, Fonts, Shadows } from "../constants/theme";
+import { MerchantService, MerchantDrop } from "../services/merchantService";
 
-interface LootDrop {
-  id: string;
-  title: string;
-  value: string;
-  code: string;
-  expiresIn: string;
-  totalClaims: number;
-  maxClaims: number;
-  active: boolean;
-}
-
-const MOCK_DROPS: LootDrop[] = [
-  {
-    id: "1",
-    title: "20% Off Any Pizza",
-    value: "20% OFF",
-    code: "PIZZA20",
-    expiresIn: "3d",
-    totalClaims: 47,
-    maxClaims: 100,
-    active: true,
-  },
-  {
-    id: "2",
-    title: "Free Side with Entree",
-    value: "FREE SIDE",
-    code: "FREESIDE",
-    expiresIn: "1d",
-    totalClaims: 89,
-    maxClaims: 100,
-    active: true,
-  },
-  {
-    id: "3",
-    title: "Buy 1 Get 1 Half Off",
-    value: "BOGO 50%",
-    code: "BOGO50",
-    expiresIn: "Expired",
-    totalClaims: 100,
-    maxClaims: 100,
-    active: false,
-  },
-];
+type LootDrop = MerchantDrop;
 
 function StatCard({
   icon,
@@ -190,8 +150,10 @@ function DropCard({
 
 export default function MerchantScreen() {
   const { theme } = useTheme();
-  const [drops, setDrops] = useState(MOCK_DROPS);
+  const [drops, setDrops] = useState<LootDrop[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [stats, setStats] = useState({ totalClaims: 0, activeDrops: 0, weeklyGrowth: "—" });
   const [newDrop, setNewDrop] = useState({
     title: "",
     value: "",
@@ -199,37 +161,55 @@ export default function MerchantScreen() {
     maxClaims: "100",
   });
 
-  const toggleDrop = (id: string) => {
+  useEffect(() => {
+    Promise.all([
+      MerchantService.getDrops(),
+      MerchantService.getStats(),
+    ]).then(([dropsData, statsData]) => {
+      setDrops(dropsData);
+      setStats(statsData);
+      setLoading(false);
+    });
+  }, []);
+
+  const toggleDrop = async (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const drop = drops.find((d) => d.id === id);
+    if (!drop) return;
+    const newActive = !drop.active;
     setDrops((prev) =>
-      prev.map((d) => (d.id === id ? { ...d, active: !d.active } : d))
+      prev.map((d) => (d.id === id ? { ...d, active: newActive } : d))
     );
+    await MerchantService.toggleDrop(id, newActive);
   };
 
-  const handleCreateDrop = () => {
+  const handleCreateDrop = async () => {
     if (!newDrop.title || !newDrop.value || !newDrop.code) {
       Alert.alert("Missing Info", "Fill in all fields to create a loot drop.");
       return;
     }
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    const drop: LootDrop = {
-      id: Date.now().toString(),
+    const created = await MerchantService.createDrop({
       title: newDrop.title,
       value: newDrop.value,
-      code: newDrop.code.toUpperCase(),
-      expiresIn: "7d",
-      totalClaims: 0,
+      code: newDrop.code,
       maxClaims: parseInt(newDrop.maxClaims) || 100,
-      active: true,
-    };
-    setDrops((prev) => [drop, ...prev]);
+      merchantId: "00000000-0000-0000-0000-000000000001", // demo merchant
+      businessName: "My Business",
+      category: "restaurant",
+      latitude: 37.7895,
+      longitude: -122.4020,
+    });
+    if (created) {
+      setDrops((prev) => [created, ...prev]);
+    }
     setNewDrop({ title: "", value: "", code: "", maxClaims: "100" });
     setShowCreate(false);
-    Alert.alert("🎉 Drop Created!", `"${drop.title}" is now live for customers to discover.`);
+    Alert.alert("Drop Created!", `"${newDrop.title}" is now live for customers to discover.`);
   };
 
-  const totalClaims = drops.reduce((sum, d) => sum + d.totalClaims, 0);
-  const activeDrops = drops.filter((d) => d.active).length;
+  const totalClaims = stats.totalClaims;
+  const activeDrops = stats.activeDrops;
 
   return (
     <ScreenScrollView>
@@ -250,8 +230,10 @@ export default function MerchantScreen() {
       <Animated.View entering={FadeInDown.duration(500).delay(100)} style={merchantStyles.statsRow}>
         <StatCard icon="gift" label="Active Drops" value={String(activeDrops)} color={theme.primary} />
         <StatCard icon="users" label="Total Claims" value={String(totalClaims)} color={theme.accent} />
-        <StatCard icon="trending-up" label="This Week" value="+23%" color={theme.success} />
+        <StatCard icon="trending-up" label="This Week" value={stats.weeklyGrowth} color={theme.success} />
       </Animated.View>
+
+      {loading && <ActivityIndicator color={theme.primary} style={{ padding: Spacing.xl }} />}
 
       {/* Create form */}
       {showCreate && (

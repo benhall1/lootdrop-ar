@@ -12,6 +12,7 @@ import { useTheme } from "../hooks/useTheme";
 import { Spacing, BorderRadius, Fonts, WebShadows, Gradients } from "../constants/theme";
 import { GamificationService, GamificationState } from "../services/gamificationService";
 import { SoundService } from "../services/soundService";
+import { PushService } from "../services/pushService";
 
 type Tab = "leaderboard" | "activity" | "badges";
 
@@ -19,10 +20,27 @@ export default function SocialScreen() {
   const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState<Tab>("leaderboard");
   const [gamification, setGamification] = useState<GamificationState | null>(null);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushSupported, setPushSupported] = useState(false);
 
   useEffect(() => {
     GamificationService.getState().then(setGamification);
+    if (PushService.isSupported()) {
+      setPushSupported(true);
+      PushService.isSubscribed().then(setPushEnabled);
+    }
   }, []);
+
+  const handleTogglePush = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (pushEnabled) {
+      await PushService.unsubscribe();
+      setPushEnabled(false);
+    } else {
+      const sub = await PushService.subscribe();
+      setPushEnabled(!!sub);
+    }
+  };
 
   const handleShare = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -47,15 +65,28 @@ export default function SocialScreen() {
             See what's happening nearby
           </ThemedText>
         </View>
-        <Pressable
-          onPress={handleShare}
-          style={[styles.shareBtn, { backgroundColor: theme.primary + "15", borderColor: theme.primary + "30" }]}
-        >
-          <Feather name="share-2" size={16} color={theme.primary} />
-          <ThemedText style={[styles.shareBtnText, { color: theme.primary }]}>
-            Share
-          </ThemedText>
-        </Pressable>
+        <View style={{ flexDirection: "row", gap: Spacing.xs }}>
+          {pushSupported && (
+            <Pressable
+              onPress={handleTogglePush}
+              style={[styles.shareBtn, {
+                backgroundColor: pushEnabled ? theme.success + "15" : theme.textSecondary + "15",
+                borderColor: pushEnabled ? theme.success + "30" : theme.border,
+              }]}
+            >
+              <Feather name={pushEnabled ? "bell" : "bell-off"} size={16} color={pushEnabled ? theme.success : theme.textSecondary} />
+            </Pressable>
+          )}
+          <Pressable
+            onPress={handleShare}
+            style={[styles.shareBtn, { backgroundColor: theme.primary + "15", borderColor: theme.primary + "30" }]}
+          >
+            <Feather name="share-2" size={16} color={theme.primary} />
+            <ThemedText style={[styles.shareBtnText, { color: theme.primary }]}>
+              Share
+            </ThemedText>
+          </Pressable>
+        </View>
       </Animated.View>
 
       {/* Your stats */}

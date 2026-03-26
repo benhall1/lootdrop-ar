@@ -44,3 +44,5 @@ app-example
 /android
 .vercel
 .local/
+.gstack/
+supabase/.temp/

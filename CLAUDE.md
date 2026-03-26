@@ -92,18 +92,19 @@ Fly.io (Express API)
 |---|------|--------|
 | 1 | Radar View | DONE |
 | 2 | Merchant self-serve | DONE (UI, needs Supabase) |
-| 3 | Web Push notifications | TODO |
+| 3 | Web Push notifications | DONE (client-side, needs server dispatch) |
 | 4 | Social (leaderboard, activity, badges) | DONE (UI, mock data) |
 | 5 | Sound design + haptics | DONE |
 | 6 | Gamification (XP, streaks, tiers) | DONE |
 
 ### Remaining Work
 
-- **Create Supabase project** — run migrations + seed data (see `supabase/README.md`)
+- **Create Supabase project** — DONE (migrations + seed data deployed)
 - **Add Vercel env vars** — EXPO_PUBLIC_SUPABASE_URL + EXPO_PUBLIC_SUPABASE_ANON_KEY
 - **Stripe Edge Functions** — webhook handler + checkout session creation
-- **Web Push notifications** — service worker + notification dispatch
-- **Wire leaderboard/social** to real Supabase data (currently mock)
+- **Web Push notifications** — DONE (SW + subscribe/unsubscribe + Supabase storage). Server-side dispatch via Fly.io is TODO.
+- **Wire leaderboard/social** to real Supabase data — DONE (socialService.ts)
+- **Wire merchant self-serve** to real Supabase data — DONE (merchantService.ts)
 
 ## Database Schema (Supabase PostgreSQL + PostGIS)
 

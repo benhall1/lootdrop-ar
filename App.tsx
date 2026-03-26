@@ -11,6 +11,7 @@ import LoginScreen from "@/screens/LoginScreen";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WebFontLoader } from "@/components/WebFontLoader";
 import { AuthService } from "@/services/authService";
+import { PushService } from "@/services/pushService";
 
 interface AuthContextType {
   signOut: () => Promise<void>;
@@ -35,6 +36,9 @@ export default function App() {
       setIsAuthenticated(!!session);
       setIsLoading(false);
     });
+
+    // Register service worker for push notifications
+    PushService.register();
 
     return unsubscribe;
   }, []);

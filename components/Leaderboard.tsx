@@ -1,35 +1,13 @@
-import React from "react";
-import { View, StyleSheet, Platform } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, StyleSheet, Platform, ActivityIndicator } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { ThemedText } from "./ThemedText";
 import { useTheme } from "../hooks/useTheme";
 import { Spacing, BorderRadius, Fonts, WebShadows, Gradients } from "../constants/theme";
-
-interface LeaderboardEntry {
-  rank: number;
-  name: string;
-  xp: number;
-  level: number;
-  tier: "bronze" | "silver" | "gold";
-  claims: number;
-  isCurrentUser?: boolean;
-}
+import { SocialService, LeaderboardEntry } from "../services/socialService";
 
 const TIER_EMOJI = { bronze: "🔥", silver: "⚡", gold: "👑" };
 const RANK_DISPLAY = ["🥇", "🥈", "🥉"];
-
-const MOCK_LEADERBOARD: LeaderboardEntry[] = [
-  { rank: 1, name: "TreasureKing", xp: 4200, level: 12, tier: "gold", claims: 87 },
-  { rank: 2, name: "LootQueen22", xp: 3800, level: 11, tier: "gold", claims: 72 },
-  { rank: 3, name: "DealHunterX", xp: 3100, level: 9, tier: "silver", claims: 65 },
-  { rank: 4, name: "CouponNinja", xp: 2600, level: 8, tier: "silver", claims: 51 },
-  { rank: 5, name: "You", xp: 0, level: 1, tier: "bronze", claims: 0, isCurrentUser: true },
-  { rank: 6, name: "SaverSam", xp: 1800, level: 7, tier: "silver", claims: 38 },
-  { rank: 7, name: "BargainBoss", xp: 1200, level: 5, tier: "bronze", claims: 24 },
-  { rank: 8, name: "LootLooper", xp: 900, level: 4, tier: "bronze", claims: 19 },
-  { rank: 9, name: "ChestChaser", xp: 600, level: 3, tier: "bronze", claims: 12 },
-  { rank: 10, name: "NewExplorer", xp: 100, level: 1, tier: "bronze", claims: 3 },
-];
 
 interface LeaderboardProps {
   userXP?: number;
@@ -40,14 +18,28 @@ interface LeaderboardProps {
 
 export function Leaderboard({ userXP = 0, userLevel = 1, userTier = "bronze", userClaims = 0 }: LeaderboardProps) {
   const { theme } = useTheme();
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Inject user data into mock leaderboard
-  const entries = MOCK_LEADERBOARD.map((entry) => {
-    if (entry.isCurrentUser) {
-      return { ...entry, xp: userXP, level: userLevel, tier: userTier, claims: userClaims };
-    }
-    return entry;
-  }).sort((a, b) => b.xp - a.xp).map((entry, i) => ({ ...entry, rank: i + 1 }));
+  useEffect(() => {
+    SocialService.getLeaderboard().then((data) => {
+      setLeaderboard(data);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) {
+    return <ActivityIndicator color={theme.primary} style={{ padding: Spacing.xl }} />;
+  }
+
+  // Inject current user into leaderboard, re-sort, re-rank
+  const withUser: LeaderboardEntry[] = [
+    ...leaderboard,
+    { rank: 0, name: "You", xp: userXP, level: userLevel, tier: userTier, claims: userClaims, isCurrentUser: true },
+  ];
+  const entries = withUser
+    .sort((a, b) => b.xp - a.xp)
+    .map((entry, i) => ({ ...entry, rank: i + 1 }));
 
   return (
     <View style={lbStyles.container}>
