@@ -13,8 +13,8 @@ import { MapView } from "../components/MapView";
 import { useTheme } from "../hooks/useTheme";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Spacing, BorderRadius } from "../constants/theme";
-import { mockLootBoxes } from "../services/mockData";
 import { LootBoxService } from "../services/lootBoxService";
+import { DemoService } from "../services/demoService";
 import { LocationService } from "../services/locationService";
 import { StorageService } from "../services/storageService";
 import { LocationCategory, LootBox, UserLocation } from "../types";
@@ -98,7 +98,7 @@ export default function MapScreen({ navigation }: any) {
     loadFavorites();
   }, []);
 
-  /** Fetch loot boxes from Supabase, fall back to mock data */
+  /** Fetch loot boxes from Supabase, fall back to demo data */
   useEffect(() => {
     const fetchLootBoxes = async () => {
       try {
@@ -106,9 +106,17 @@ export default function MapScreen({ navigation }: any) {
           ? await LootBoxService.getNearby(userLocation.latitude, userLocation.longitude)
           : await LootBoxService.getAll(selectedCategory || undefined);
 
-        setLootBoxes(boxes.length > 0 ? boxes : mockLootBoxes);
+        if (boxes.length > 0) {
+          setLootBoxes(boxes);
+        } else if (userLocation) {
+          const demo = await DemoService.getDemoBoxes(userLocation.latitude, userLocation.longitude);
+          setLootBoxes(demo);
+        }
       } catch {
-        setLootBoxes(mockLootBoxes);
+        if (userLocation) {
+          const demo = await DemoService.getDemoBoxes(userLocation.latitude, userLocation.longitude);
+          setLootBoxes(demo);
+        }
       }
     };
 

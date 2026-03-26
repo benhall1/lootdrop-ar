@@ -9,6 +9,11 @@ export interface User {
   provider: "apple" | "google" | "email" | "guest";
   avatarTier: "gold" | "silver" | "bronze";
   isPremium: boolean;
+  role: "consumer" | "merchant";
+  businessName?: string;
+  businessCategory?: string;
+  businessLat?: number;
+  businessLng?: number;
 }
 
 export class AuthService {
@@ -65,7 +70,7 @@ export class AuthService {
       await supabase.auth.signInWithPassword({ email, password });
 
     if (signInData.session) {
-      return this.sessionToUser(signInData.session);
+      return await this.sessionToUser(signInData.session);
     }
 
     // If sign-in fails, try sign up
@@ -75,7 +80,7 @@ export class AuthService {
 
       if (signUpError) throw signUpError;
       if (signUpData.session) {
-        return this.sessionToUser(signUpData.session);
+        return await this.sessionToUser(signUpData.session);
       }
     }
 
@@ -94,12 +99,12 @@ export class AuthService {
         provider: "guest",
         avatarTier: "bronze",
         isPremium: false,
+        role: "consumer",
       };
     }
     const { data, error } = await supabase.auth.signInAnonymously();
 
     if (error) {
-      // Fallback: create a local-only guest user if Supabase is unavailable
       return {
         id: this.generateGuestId(),
         name: "Guest User",
@@ -107,6 +112,7 @@ export class AuthService {
         provider: "guest",
         avatarTier: "bronze",
         isPremium: false,
+        role: "consumer",
       };
     }
 
@@ -117,6 +123,7 @@ export class AuthService {
       provider: "guest",
       avatarTier: "bronze",
       isPremium: false,
+      role: "consumer",
     };
   }
 
@@ -129,7 +136,7 @@ export class AuthService {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) return null;
-      return this.sessionToUser(session);
+      return await this.sessionToUser(session);
     } catch (error) {
       console.error("Error getting current user:", error);
       return null;
@@ -207,11 +214,11 @@ export class AuthService {
   /**
    * Convert a Supabase session into our app's User interface.
    */
-  private static sessionToUser(session: Session): User {
+  private static async sessionToUser(session: Session): Promise<User> {
     const supaUser = session.user;
     const provider = (supaUser.app_metadata?.provider || "email") as User["provider"];
 
-    return {
+    const baseUser: User = {
       id: supaUser.id,
       name:
         supaUser.user_metadata?.full_name ||
@@ -226,6 +233,27 @@ export class AuthService {
           : "email",
       avatarTier: "bronze",
       isPremium: false,
+      role: "consumer",
     };
+
+    // Enrich with DB profile data
+    try {
+      const { data } = await supabase
+        .from("users")
+        .select("role, business_name, business_category, business_lat, business_lng, avatar_tier")
+        .eq("id", supaUser.id)
+        .single();
+
+      if (data) {
+        baseUser.role = data.role || "consumer";
+        baseUser.businessName = data.business_name || undefined;
+        baseUser.businessCategory = data.business_category || undefined;
+        baseUser.businessLat = data.business_lat || undefined;
+        baseUser.businessLng = data.business_lng || undefined;
+        baseUser.avatarTier = data.avatar_tier || "bronze";
+      }
+    } catch {}
+
+    return baseUser;
   }
 }

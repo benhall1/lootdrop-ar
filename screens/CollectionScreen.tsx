@@ -7,6 +7,7 @@ import { ScreenScrollView } from "../components/ScreenScrollView";
 import { ThemedText } from "../components/ThemedText";
 import { ThemedView } from "../components/ThemedView";
 import { CouponCard } from "../components/CouponCard";
+import { RedemptionModal } from "../components/RedemptionModal";
 import { useTheme } from "../hooks/useTheme";
 import { Spacing, BorderRadius, Fonts, WebShadows, Gradients } from "../constants/theme";
 import { StorageService } from "../services/storageService";
@@ -17,6 +18,8 @@ import { CollectedCoupon } from "../types";
 export default function CollectionScreen() {
   const { theme } = useTheme();
   const [coupons, setCoupons] = useState<CollectedCoupon[]>([]);
+  const [selectedCoupon, setSelectedCoupon] = useState<CollectedCoupon | null>(null);
+  const [showRedemption, setShowRedemption] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -51,37 +54,24 @@ export default function CollectionScreen() {
     return sum;
   }, 0);
 
-  const handleCouponPress = async (coupon: CollectedCoupon) => {
-    if (coupon.isUsed) {
-      Alert.alert(
-        coupon.title,
-        `${coupon.description}\n\nCode: ${coupon.code}\n\nTerms: Valid at ${coupon.businessName}\n\nThis coupon has already been used.`,
-        [{ text: "OK" }]
-      );
+  const handleCouponPress = (coupon: CollectedCoupon) => {
+    setSelectedCoupon(coupon);
+    setShowRedemption(true);
+  };
+
+  const handleMarkUsed = async (couponId: string) => {
+    if (isSupabaseConfigured) {
+      await ClaimService.markAsUsed(couponId);
     } else {
-      Alert.alert(
-        coupon.title,
-        `${coupon.description}\n\nCode: ${coupon.code}\n\nTerms: Valid at ${coupon.businessName}`,
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Mark as Used",
-            onPress: async () => {
-              if (isSupabaseConfigured) {
-                await ClaimService.markAsUsed(coupon.id);
-              } else {
-                await StorageService.markCouponAsUsed(coupon.id);
-              }
-              await loadCoupons();
-              Alert.alert("Success", "Coupon marked as used!");
-            },
-          },
-        ]
-      );
+      await StorageService.markCouponAsUsed(couponId);
     }
+    setShowRedemption(false);
+    setSelectedCoupon(null);
+    await loadCoupons();
   };
 
   return (
+    <>
     <ScreenScrollView>
       {/* Hero stats */}
       <Animated.View entering={FadeInDown.duration(500)}>
@@ -206,6 +196,17 @@ export default function CollectionScreen() {
         </Animated.View>
       )}
     </ScreenScrollView>
+
+    <RedemptionModal
+      visible={showRedemption}
+      coupon={selectedCoupon}
+      onClose={() => {
+        setShowRedemption(false);
+        setSelectedCoupon(null);
+      }}
+      onMarkUsed={handleMarkUsed}
+    />
+    </>
   );
 }
 

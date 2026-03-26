@@ -13,6 +13,7 @@ import { StorageService } from "../services/storageService";
 import { useAuth } from "../App";
 import ChatScreen from "./ChatScreen";
 import MerchantScreen from "./MerchantScreen";
+import MerchantOnboardingScreen from "./MerchantOnboardingScreen";
 
 function StatBadge({
   icon,
@@ -119,6 +120,8 @@ export default function ProfileScreen() {
   const [user, setUser] = useState<User | null>(null);
   const [showChatModal, setShowChatModal] = useState(false);
   const [showMerchantModal, setShowMerchantModal] = useState(false);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const isMerchant = user?.role === "merchant";
   const [stats, setStats] = useState({ coupons: 0, savings: 0, visits: 0 });
 
   useEffect(() => {
@@ -152,9 +155,13 @@ export default function ProfileScreen() {
   };
   const tier = tierConfig[user?.avatarTier || "bronze"];
 
-  const handleScheduleDrop = () => {
+  const handleMerchantPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setShowMerchantModal(true);
+    if (isMerchant) {
+      setShowMerchantModal(true);
+    } else {
+      setShowOnboardingModal(true);
+    }
   };
 
   const handleSignOut = () => {
@@ -239,7 +246,7 @@ export default function ProfileScreen() {
       {/* Merchant Card */}
       <Animated.View entering={FadeInDown.duration(500).delay(200)}>
         <Pressable
-          onPress={handleScheduleDrop}
+          onPress={handleMerchantPress}
           style={({ pressed }) => [
             styles.merchantCard,
             {
@@ -263,9 +270,9 @@ export default function ProfileScreen() {
               <Feather name="briefcase" size={22} color={theme.primary} />
             </View>
             <View style={styles.merchantInfo}>
-              <ThemedText type="h4">Merchant Tools</ThemedText>
+              <ThemedText type="h4">{isMerchant ? "Merchant Hub" : "Become a Merchant"}</ThemedText>
               <ThemedText style={[styles.merchantSub, { color: theme.textSecondary }]}>
-                Schedule loot drops at your location
+                {isMerchant ? `Manage ${user?.businessName || "your"} drops` : "Start creating loot drops for your business"}
               </ThemedText>
             </View>
           </View>
@@ -365,6 +372,43 @@ export default function ProfileScreen() {
             </Pressable>
           </View>
           <MerchantScreen />
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showOnboardingModal}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowOnboardingModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
+          <View
+            style={[
+              styles.modalHeader,
+              {
+                backgroundColor: theme.backgroundDefault,
+                borderBottomColor: theme.border,
+              },
+            ]}
+          >
+            <ThemedText type="h3">Become a Merchant</ThemedText>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowOnboardingModal(false);
+              }}
+              style={styles.closeButton}
+            >
+              <Feather name="x" size={24} color={theme.text} />
+            </Pressable>
+          </View>
+          <MerchantOnboardingScreen
+            userId={user?.id || ""}
+            onComplete={() => {
+              setShowOnboardingModal(false);
+              loadProfile(); // Reload to pick up merchant role
+            }}
+          />
         </View>
       </Modal>
     </ScreenScrollView>

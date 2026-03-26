@@ -148,6 +148,33 @@ export class MerchantService {
     }
   }
 
+  static async verifyClaim(claimId: string, merchantId: string): Promise<{ success: boolean; message: string; couponTitle?: string; couponCode?: string }> {
+    if (!isSupabaseConfigured) {
+      return { success: false, message: "Supabase not configured" };
+    }
+
+    try {
+      const { data, error } = await supabase.rpc("verify_claim", {
+        p_claim_id: claimId,
+        p_merchant_id: merchantId,
+      });
+
+      if (error) return { success: false, message: error.message };
+
+      if (data?.success) {
+        return {
+          success: true,
+          message: `Verified! "${data.coupon_title}" (${data.coupon_code}) redeemed.`,
+          couponTitle: data.coupon_title,
+          couponCode: data.coupon_code,
+        };
+      }
+      return { success: false, message: data?.message || "Verification failed" };
+    } catch {
+      return { success: false, message: "Could not verify claim" };
+    }
+  }
+
   static async getStats(merchantId?: string): Promise<{ totalClaims: number; activeDrops: number; weeklyGrowth: string }> {
     if (!isSupabaseConfigured) {
       return { totalClaims: 236, activeDrops: 2, weeklyGrowth: "+23%" };

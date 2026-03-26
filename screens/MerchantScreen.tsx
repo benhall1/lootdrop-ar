@@ -17,6 +17,7 @@ import { Button } from "../components/Button";
 import { useTheme } from "../hooks/useTheme";
 import { Spacing, BorderRadius, Fonts, Shadows } from "../constants/theme";
 import { MerchantService, MerchantDrop } from "../services/merchantService";
+import { AuthService, User } from "../services/authService";
 
 type LootDrop = MerchantDrop;
 
@@ -152,8 +153,11 @@ export default function MerchantScreen() {
   const { theme } = useTheme();
   const [drops, setDrops] = useState<LootDrop[]>([]);
   const [loading, setLoading] = useState(true);
+  const [merchant, setMerchant] = useState<User | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [stats, setStats] = useState({ totalClaims: 0, activeDrops: 0, weeklyGrowth: "—" });
+  const [verifyId, setVerifyId] = useState("");
+  const [verifyResult, setVerifyResult] = useState<{ success: boolean; message: string } | null>(null);
   const [newDrop, setNewDrop] = useState({
     title: "",
     value: "",
@@ -162,14 +166,19 @@ export default function MerchantScreen() {
   });
 
   useEffect(() => {
-    Promise.all([
-      MerchantService.getDrops(),
-      MerchantService.getStats(),
-    ]).then(([dropsData, statsData]) => {
+    const load = async () => {
+      const user = await AuthService.getCurrentUser();
+      setMerchant(user);
+      const merchantId = user?.role === "merchant" ? user.id : undefined;
+      const [dropsData, statsData] = await Promise.all([
+        MerchantService.getDrops(merchantId),
+        MerchantService.getStats(merchantId),
+      ]);
       setDrops(dropsData);
       setStats(statsData);
       setLoading(false);
-    });
+    };
+    load();
   }, []);
 
   const toggleDrop = async (id: string) => {
@@ -194,11 +203,11 @@ export default function MerchantScreen() {
       value: newDrop.value,
       code: newDrop.code,
       maxClaims: parseInt(newDrop.maxClaims) || 100,
-      merchantId: "00000000-0000-0000-0000-000000000001", // demo merchant
-      businessName: "My Business",
-      category: "restaurant",
-      latitude: 37.7895,
-      longitude: -122.4020,
+      merchantId: merchant?.id || "00000000-0000-0000-0000-000000000001",
+      businessName: merchant?.businessName || "My Business",
+      category: merchant?.businessCategory || "restaurant",
+      latitude: merchant?.businessLat || 37.7895,
+      longitude: merchant?.businessLng || -122.4020,
     });
     if (created) {
       setDrops((prev) => [created, ...prev]);
@@ -295,6 +304,55 @@ export default function MerchantScreen() {
             <DropCard drop={drop} onToggle={() => toggleDrop(drop.id)} />
           </Animated.View>
         ))}
+      </Animated.View>
+
+      {/* Verify Redemption */}
+      <Animated.View entering={FadeInUp.duration(500).delay(400)} style={[merchantStyles.verifySection, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+        <ThemedText type="h4" style={{ fontFamily: Fonts?.display }}>
+          Verify Redemption
+        </ThemedText>
+        <ThemedText style={{ color: theme.textSecondary, fontSize: 13 }}>
+          Enter a customer's claim ID to verify their coupon.
+        </ThemedText>
+        <View style={merchantStyles.verifyRow}>
+          <TextInput
+            placeholder="Paste claim ID..."
+            placeholderTextColor={theme.textSecondary}
+            value={verifyId}
+            onChangeText={setVerifyId}
+            style={[
+              merchantStyles.input,
+              {
+                flex: 1,
+                backgroundColor: theme.backgroundSecondary,
+                color: theme.text,
+                borderColor: theme.border,
+                fontFamily: Fonts?.mono,
+              },
+            ]}
+          />
+          <Button
+            onPress={async () => {
+              if (!verifyId.trim()) return;
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              const result = await MerchantService.verifyClaim(verifyId.trim(), merchant?.id || "");
+              setVerifyResult(result);
+              if (result.success) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              }
+            }}
+          >
+            Verify
+          </Button>
+        </View>
+        {verifyResult && (
+          <View style={[merchantStyles.verifyResult, { backgroundColor: verifyResult.success ? theme.success + "15" : theme.error + "15", borderColor: verifyResult.success ? theme.success + "30" : theme.error + "30" }]}>
+            <Feather name={verifyResult.success ? "check-circle" : "x-circle"} size={18} color={verifyResult.success ? theme.success : theme.error} />
+            <ThemedText style={{ color: verifyResult.success ? theme.success : theme.error, flex: 1 }}>
+              {verifyResult.message}
+            </ThemedText>
+          </View>
+        )}
       </Animated.View>
     </ScreenScrollView>
   );
@@ -438,5 +496,25 @@ const merchantStyles = StyleSheet.create({
   progressFill: {
     height: "100%",
     borderRadius: 3,
+  },
+  verifySection: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    gap: Spacing.md,
+    marginTop: Spacing["2xl"],
+  },
+  verifyRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    alignItems: "center",
+  },
+  verifyResult: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
   },
 });

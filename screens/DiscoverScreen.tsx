@@ -37,9 +37,9 @@ import {
   WebShadows,
   Gradients,
 } from "../constants/theme";
-import { mockLootBoxes } from "../services/mockData";
 import { LootBoxService } from "../services/lootBoxService";
 import { ClaimService } from "../services/claimService";
+import { DemoService } from "../services/demoService";
 import { GamificationService, GamificationState, ClaimResult } from "../services/gamificationService";
 import { SoundService } from "../services/soundService";
 import { calculateDistance, formatDistance } from "../services/geolocation";
@@ -188,6 +188,7 @@ export default function DiscoverScreen({ navigation }: any) {
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [nearbyLootBoxes, setNearbyLootBoxes] = useState<LootBox[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState(false);
   const [viewMode, setViewMode] = useState<"radar" | "camera">("radar");
   const [compassHeading, setCompassHeading] = useState<number | null>(null);
   const [gamification, setGamification] = useState<GamificationState | null>(null);
@@ -260,13 +261,11 @@ export default function DiscoverScreen({ navigation }: any) {
         2
       );
       if (boxes.length === 0) {
-        boxes = mockLootBoxes.filter(
-          (box) =>
-            calculateDistance(userLocation, {
-              latitude: box.latitude,
-              longitude: box.longitude,
-            }) < 2
-        );
+        // No real drops nearby — switch to demo mode
+        boxes = await DemoService.getDemoBoxes(userLocation.latitude, userLocation.longitude);
+        setIsDemoMode(true);
+      } else {
+        setIsDemoMode(false);
       }
       const sorted = boxes.sort((a, b) => {
         const dA = calculateDistance(userLocation, { latitude: a.latitude, longitude: a.longitude });
@@ -275,7 +274,12 @@ export default function DiscoverScreen({ navigation }: any) {
       });
       setNearbyLootBoxes(sorted);
     } catch {
-      setNearbyLootBoxes(mockLootBoxes);
+      const boxes = await DemoService.getDemoBoxes(
+        userLocation.latitude,
+        userLocation.longitude
+      );
+      setNearbyLootBoxes(boxes);
+      setIsDemoMode(true);
     }
   }, [userLocation]);
 
@@ -306,10 +310,13 @@ export default function DiscoverScreen({ navigation }: any) {
       longitude: box.longitude,
     });
 
-    if (distance > 0.1) {
+    const isDemo = DemoService.isDemoBox(box.id);
+    const claimRadius = isDemo ? 0.5 : 0.1; // 500m for demo, 100m for real
+
+    if (distance > claimRadius) {
       Alert.alert(
         `${box.businessName}`,
-        `🎁 ${box.coupon.value}\n📍 ${formatDistance(distance)} away\n\nGet closer to claim this loot box!`,
+        `🎁 ${box.coupon.value}\n📍 ${formatDistance(distance)} away\n\n${isDemo ? "Get within 500m to claim this demo drop!" : "Get closer to claim this loot box!"}`,
         [
           {
             text: "Get Directions",
@@ -328,6 +335,29 @@ export default function DiscoverScreen({ navigation }: any) {
 
     // Close enough to claim
     SoundService.chestOpen();
+
+    if (isDemo) {
+      // Demo claim — skip Supabase, save locally
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const demoCoupon = {
+        ...box.coupon,
+        collectedAt: Date.now(),
+        isUsed: false,
+      };
+      await StorageService.addCollectedCoupon(demoCoupon);
+
+      const claimResult = await GamificationService.recordClaim(box.businessName);
+      setGamification(await GamificationService.getState());
+
+      SoundService.claimSuccess();
+      if (claimResult.leveledUp) setTimeout(() => SoundService.levelUp(), 800);
+      if (claimResult.newBadges.length > 0) setTimeout(() => SoundService.badgeUnlock(), 600);
+
+      setCelebration({ visible: true, box, claimResult });
+      return;
+    }
+
+    // Real claim via Supabase
     const result = await ClaimService.claimLootBox(
       box.id,
       userLocation.latitude,
@@ -340,16 +370,13 @@ export default function DiscoverScreen({ navigation }: any) {
         await StorageService.addCollectedCoupon(result.coupon);
       }
 
-      // Record in gamification system
       const claimResult = await GamificationService.recordClaim(box.businessName);
       setGamification(await GamificationService.getState());
 
-      // Play celebration sounds
       SoundService.claimSuccess();
       if (claimResult.leveledUp) setTimeout(() => SoundService.levelUp(), 800);
       if (claimResult.newBadges.length > 0) setTimeout(() => SoundService.badgeUnlock(), 600);
 
-      // Show celebration modal
       setCelebration({ visible: true, box, claimResult });
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -432,6 +459,18 @@ export default function DiscoverScreen({ navigation }: any) {
             </Pressable>
           </View>
         </Animated.View>
+
+        {/* Demo mode banner */}
+        {isDemoMode && (
+          <Animated.View
+            entering={FadeInDown.duration(400)}
+            style={[styles.demoBanner, { backgroundColor: theme.accent + "15", borderColor: theme.accent + "30" }]}
+          >
+            <ThemedText style={[styles.demoBannerText, { color: theme.accent }]}>
+              Demo Mode — sample drops to try the app
+            </ThemedText>
+          </Animated.View>
+        )}
 
         {/* XP Bar */}
         {gamification && (
@@ -602,5 +641,17 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 14,
     textAlign: "center",
+  },
+  demoBanner: {
+    paddingVertical: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    marginBottom: Spacing.md,
+    alignItems: "center",
+  },
+  demoBannerText: {
+    fontSize: 12,
+    fontWeight: "700",
   },
 });
