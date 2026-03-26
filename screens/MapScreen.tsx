@@ -75,16 +75,16 @@ export default function MapScreen({ navigation }: any) {
         setMapRegion({
           latitude: location.latitude,
           longitude: location.longitude,
-          latitudeDelta: 0.05,
-          longitudeDelta: 0.05,
+          latitudeDelta: 0.015,
+          longitudeDelta: 0.015,
         });
       } else {
-        const defaultLocation = mockLootBoxes[0];
+        // Default to a generic center — demo boxes will populate around the user once located
         setMapRegion({
-          latitude: defaultLocation.latitude,
-          longitude: defaultLocation.longitude,
-          latitudeDelta: 0.05,
-          longitudeDelta: 0.05,
+          latitude: 40.7128,
+          longitude: -74.006,
+          latitudeDelta: 0.015,
+          longitudeDelta: 0.015,
         });
       }
     };
@@ -169,10 +169,17 @@ export default function MapScreen({ navigation }: any) {
           },
         ]}
       >
-        <ThemedText type="h3">Loot Drops Nearby</ThemedText>
+        <View style={styles.headerRow}>
+          <ThemedText type="h3">Loot Drops Nearby</ThemedText>
+          {lootBoxes.length > 0 && (
+            <View style={[styles.countBadge, { backgroundColor: theme.primary }]}>
+              <ThemedText style={styles.countText}>{lootBoxes.length}</ThemedText>
+            </View>
+          )}
+        </View>
         {userLocation && (
           <ThemedText style={[styles.locationText, { color: theme.textSecondary }]}>
-            <Feather name="navigation" size={14} /> Live location enabled
+            <Feather name="navigation" size={14} /> {filteredLootBoxes.filter(b => b.isActive).length} active · {filteredLootBoxes.filter(b => !b.isActive).length} scheduled
           </ThemedText>
         )}
       </View>
@@ -316,6 +323,21 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: Spacing.xl,
     gap: Spacing.xs,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  countBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  countText: {
+    color: "#FFF",
+    fontSize: 12,
+    fontWeight: "800",
   },
   locationText: {
     fontSize: 14,
