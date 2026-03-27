@@ -94,7 +94,7 @@ function NearbyCard({
         size={44}
       />
       <View style={cardStyles.info}>
-        <ThemedText style={[cardStyles.name, { fontFamily: Fonts?.sans }]}>
+        <ThemedText style={[cardStyles.name, { fontFamily: Fonts?.sans }]} numberOfLines={1} ellipsizeMode="tail">
           {box.businessName}
         </ThemedText>
         <View style={cardStyles.meta}>

@@ -66,6 +66,7 @@ export function CouponCard({ coupon, onPress }: CouponCardProps) {
             <ThemedText
               style={[styles.businessName, { color: theme.textSecondary }]}
               numberOfLines={1}
+              ellipsizeMode="tail"
             >
               {coupon.businessName}
             </ThemedText>
@@ -73,6 +74,7 @@ export function CouponCard({ coupon, onPress }: CouponCardProps) {
               type="h4"
               style={styles.couponTitle}
               numberOfLines={1}
+              ellipsizeMode="tail"
             >
               {coupon.title}
             </ThemedText>

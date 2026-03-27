@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 14,
     lineHeight: 20,
-    maxWidth: 280,
+    maxWidth: "85%",
   },
   input: {
     width: "100%",

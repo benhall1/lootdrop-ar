@@ -75,7 +75,7 @@ export function RedemptionModal({ visible, coupon, onClose, onMarkUsed }: Props)
             <ThemedText style={styles.valueText}>{coupon.value}</ThemedText>
           </View>
 
-          <ThemedText type="h4" style={{ textAlign: "center" }}>{coupon.title}</ThemedText>
+          <ThemedText type="h4" style={{ textAlign: "center" }} numberOfLines={2} ellipsizeMode="tail">{coupon.title}</ThemedText>
           <ThemedText style={[styles.desc, { color: theme.textSecondary }]}>{coupon.description}</ThemedText>
 
           {/* QR Code */}

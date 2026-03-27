@@ -231,7 +231,7 @@ export default function MapScreen({ navigation }: any) {
                 size={48}
               />
               <View style={styles.businessDetails}>
-                <ThemedText type="h4" numberOfLines={1}>
+                <ThemedText type="h4" numberOfLines={1} ellipsizeMode="tail">
                   {selectedLootBox.businessName}
                 </ThemedText>
                 <ThemedText style={[styles.categoryText, { color: theme.textSecondary }]}>

@@ -193,10 +193,12 @@ export default function SocialScreen() {
                     styles.badgeName,
                     { color: badge.unlockedAt ? theme.text : theme.textSecondary },
                   ]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
                 >
                   {badge.name}
                 </ThemedText>
-                <ThemedText style={[styles.badgeDesc, { color: theme.textSecondary }]}>
+                <ThemedText style={[styles.badgeDesc, { color: theme.textSecondary }]} numberOfLines={2} ellipsizeMode="tail">
                   {badge.description}
                 </ThemedText>
                 {badge.unlockedAt && (

@@ -99,6 +99,8 @@ export function Leaderboard({ userXP = 0, userLevel = 1, userTier = "bronze", us
                     fontFamily: Fonts?.sans,
                   },
                 ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
               >
                 {entry.isCurrentUser ? "You" : entry.name}
               </ThemedText>

@@ -100,13 +100,13 @@ export function XPBar({ state, compact = false }: XPBarProps) {
         <View style={styles.statsRow}>
           {state.streak > 0 && (
             <View style={[styles.statPill, { backgroundColor: theme.streak + "15" }]}>
-              <ThemedText style={[styles.statPillText, { color: theme.streak }]}>
+              <ThemedText style={[styles.statPillText, { color: theme.streak }]} numberOfLines={1}>
                 🔥 {state.streak}d streak
               </ThemedText>
             </View>
           )}
           <View style={[styles.statPill, { backgroundColor: theme.accent + "15" }]}>
-            <ThemedText style={[styles.statPillText, { color: theme.accent }]}>
+            <ThemedText style={[styles.statPillText, { color: theme.accent }]} numberOfLines={1}>
               {state.totalClaims} claims
             </ThemedText>
           </View>

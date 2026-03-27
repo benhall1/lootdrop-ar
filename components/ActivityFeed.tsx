@@ -53,7 +53,7 @@ export function ActivityFeed() {
             <ThemedText style={feedStyles.emoji}>{item.emoji}</ThemedText>
           </View>
           <View style={feedStyles.textCol}>
-            <ThemedText style={feedStyles.message}>
+            <ThemedText style={feedStyles.message} numberOfLines={2} ellipsizeMode="tail">
               <ThemedText style={[feedStyles.username, { color: theme.primary }]}>
                 {item.user}
               </ThemedText>
