@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   StyleSheet,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   Platform,
   RefreshControl,
+  TextInput,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -45,7 +46,8 @@ import { SoundService } from "../services/soundService";
 import { calculateDistance, formatDistance } from "../services/geolocation";
 import { LocationService } from "../services/locationService";
 import { StorageService } from "../services/storageService";
-import { UserLocation, LootBox } from "../types";
+import { CategoryChip } from "../components/CategoryChip";
+import { UserLocation, LootBox, LocationCategory } from "../types";
 
 const CATEGORY_EMOJI: Record<string, string> = {
   restaurant: "🍕",
@@ -189,6 +191,9 @@ export default function DiscoverScreen({ navigation }: any) {
   const [nearbyLootBoxes, setNearbyLootBoxes] = useState<LootBox[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<LocationCategory | null>(null);
+  const categories: LocationCategory[] = ["restaurant", "retail", "entertainment", "services"];
   const [viewMode, setViewMode] = useState<"radar" | "camera">("radar");
   const [compassHeading, setCompassHeading] = useState<number | null>(null);
   const [gamification, setGamification] = useState<GamificationState | null>(null);
@@ -385,7 +390,19 @@ export default function DiscoverScreen({ navigation }: any) {
     }
   };
 
-  const activeCount = nearbyLootBoxes.filter((b) => b.isActive).length;
+  const filteredLootBoxes = useMemo(() => {
+    let result = nearbyLootBoxes;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((b) => b.businessName.toLowerCase().includes(q));
+    }
+    if (selectedCategory) {
+      result = result.filter((b) => b.category === selectedCategory);
+    }
+    return result;
+  }, [nearbyLootBoxes, searchQuery, selectedCategory]);
+
+  const activeCount = filteredLootBoxes.filter((b) => b.isActive).length;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
@@ -472,6 +489,42 @@ export default function DiscoverScreen({ navigation }: any) {
           </Animated.View>
         )}
 
+        {/* Search bar */}
+        <Animated.View entering={FadeInDown.duration(400).delay(50)} style={styles.searchRow}>
+          <View style={[styles.searchBar, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+            <Feather name="search" size={16} color={theme.textSecondary} />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search businesses..."
+              placeholderTextColor={theme.textSecondary}
+              style={[styles.searchInput, { color: theme.text }]}
+            />
+            {searchQuery.length > 0 && (
+              <Pressable onPress={() => setSearchQuery("")}>
+                <Feather name="x" size={16} color={theme.textSecondary} />
+              </Pressable>
+            )}
+          </View>
+        </Animated.View>
+
+        {/* Category chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipRow}
+          style={{ marginBottom: Spacing.md }}
+        >
+          {categories.map((cat) => (
+            <CategoryChip
+              key={cat}
+              category={cat}
+              selected={selectedCategory === cat}
+              onPress={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
+            />
+          ))}
+        </ScrollView>
+
         {/* XP Bar */}
         {gamification && (
           <Animated.View entering={FadeInDown.duration(500).delay(50)} style={{ marginBottom: Spacing.xl }}>
@@ -483,7 +536,7 @@ export default function DiscoverScreen({ navigation }: any) {
         {viewMode === "radar" ? (
           <Animated.View entering={FadeInDown.duration(600).delay(100)} style={styles.radarSection}>
             <RadarView
-              lootBoxes={nearbyLootBoxes}
+              lootBoxes={filteredLootBoxes}
               userLocation={userLocation}
               onLootBoxTap={handleLootBoxTap}
             />
@@ -491,7 +544,7 @@ export default function DiscoverScreen({ navigation }: any) {
         ) : (
           <View style={styles.cameraSection}>
             <CameraARView
-              lootBoxes={nearbyLootBoxes}
+              lootBoxes={filteredLootBoxes}
               userLocation={userLocation}
               onLootBoxTap={handleLootBoxTap}
               compassHeading={compassHeading}
@@ -500,13 +553,13 @@ export default function DiscoverScreen({ navigation }: any) {
         )}
 
         {/* Nearby list */}
-        {nearbyLootBoxes.length > 0 && (
+        {filteredLootBoxes.length > 0 && (
           <Animated.View entering={FadeInUp.duration(500).delay(300)} style={styles.listSection}>
             <ThemedText type="h4" style={styles.listTitle}>
               Nearby Loot
             </ThemedText>
             <View style={styles.cardList}>
-              {nearbyLootBoxes.map((box, i) => (
+              {filteredLootBoxes.map((box, i) => (
                 <Animated.View
                   key={box.id}
                   entering={FadeInUp.duration(400).delay(400 + i * 80)}
@@ -530,14 +583,16 @@ export default function DiscoverScreen({ navigation }: any) {
         )}
 
         {/* Empty state */}
-        {nearbyLootBoxes.length === 0 && userLocation && (
+        {filteredLootBoxes.length === 0 && userLocation && (
           <Animated.View entering={FadeInUp.duration(500).delay(300)} style={styles.emptyState}>
-            <ThemedText style={{ fontSize: 48 }}>🔍</ThemedText>
+            <ThemedText style={{ fontSize: 48 }}>{searchQuery || selectedCategory ? "🔎" : "🔍"}</ThemedText>
             <ThemedText type="h4" style={{ textAlign: "center" }}>
-              No loot boxes nearby
+              {searchQuery || selectedCategory ? "No matches" : "No loot boxes nearby"}
             </ThemedText>
             <ThemedText style={[styles.emptyText, { color: theme.textSecondary }]}>
-              Try exploring a different area or check back later!
+              {searchQuery || selectedCategory
+                ? "Try a different search or clear filters"
+                : "Try exploring a different area or check back later!"}
             </ThemedText>
           </Animated.View>
         )}
@@ -653,5 +708,25 @@ const styles = StyleSheet.create({
   demoBannerText: {
     fontSize: 12,
     fontWeight: "700",
+  },
+  searchRow: {
+    marginBottom: Spacing.md,
+  },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    paddingVertical: 2,
+  },
+  chipRow: {
+    gap: Spacing.sm,
   },
 });
