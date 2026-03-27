@@ -245,17 +245,18 @@ export default function DiscoverScreen({ navigation }: any) {
     return () => window.removeEventListener("deviceorientation", handler);
   }, [viewMode]);
 
-  // Load gamification state + check daily bonus
+  // Load gamification state + check daily bonus (skip if tour hasn't been completed yet)
   useEffect(() => {
     GamificationService.getState().then(setGamification);
-    GamificationService.checkDailyBonus().then((result) => {
-      if (result.awarded) {
-        setDailyBonus(result);
-        // Refresh gamification state after bonus
-        GamificationService.getState().then(setGamification);
-      }
-    });
-  }, []);
+    if (tourCompleted) {
+      GamificationService.checkDailyBonus().then((result) => {
+        if (result.awarded) {
+          setDailyBonus(result);
+          GamificationService.getState().then(setGamification);
+        }
+      });
+    }
+  }, [tourCompleted]);
 
   useEffect(() => {
     let sub: any = null;
@@ -308,15 +309,14 @@ export default function DiscoverScreen({ navigation }: any) {
     fetchNearby();
   }, [fetchNearby]);
 
-  // Start guided tour after first load (location + loot boxes ready)
+  // Start guided tour after first load (loot boxes ready, daily bonus dismissed)
   useEffect(() => {
-    if (!tourStarted && !tourCompleted && userLocation && nearbyLootBoxes.length > 0) {
+    if (!tourStarted && !tourCompleted && nearbyLootBoxes.length > 0 && !dailyBonus?.awarded) {
       setTourStarted(true);
-      // Small delay so the UI renders first
-      const timer = setTimeout(() => startTour(), 800);
+      const timer = setTimeout(() => startTour(), 1000);
       return () => clearTimeout(timer);
     }
-  }, [userLocation, nearbyLootBoxes, tourStarted, tourCompleted, startTour]);
+  }, [nearbyLootBoxes, tourStarted, tourCompleted, startTour, dailyBonus]);
 
   const onRefresh = async () => {
     setRefreshing(true);

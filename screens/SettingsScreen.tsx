@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, Switch, Platform } from "react-native";
+import { View, StyleSheet, Switch, Pressable, Platform } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -152,8 +152,37 @@ export default function SettingsScreen() {
         </View>
       </Animated.View>
 
-      {/* About */}
+      {/* Actions */}
       <Animated.View entering={FadeInDown.duration(400).delay(200)}>
+        <ThemedText style={[styles.sectionLabel, { color: theme.textSecondary }]}>
+          ACTIONS
+        </ThemedText>
+        <View style={[styles.section, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
+          <Pressable
+            onPress={async () => {
+              await AsyncStorage.removeItem("@lootdrop_tour_complete");
+              toast.success("Tour will replay on next visit to Discover");
+            }}
+            style={[styles.actionRow, { borderColor: theme.border }]}
+          >
+            <View style={[styles.rowIcon, { backgroundColor: theme.backgroundSecondary }]}>
+              <Feather name="play-circle" size={18} color={theme.text} />
+            </View>
+            <View style={styles.rowText}>
+              <ThemedText style={[styles.rowLabel, { fontFamily: Fonts?.sans }]}>
+                Replay Tour
+              </ThemedText>
+              <ThemedText style={[styles.rowDesc, { color: theme.textSecondary }]} numberOfLines={2}>
+                Walk through the app features again
+              </ThemedText>
+            </View>
+            <Feather name="chevron-right" size={18} color={theme.textSecondary} />
+          </Pressable>
+        </View>
+      </Animated.View>
+
+      {/* About */}
+      <Animated.View entering={FadeInDown.duration(400).delay(300)}>
         <ThemedText style={[styles.sectionLabel, { color: theme.textSecondary }]}>
           ABOUT
         </ThemedText>
@@ -218,6 +247,12 @@ const styles = StyleSheet.create({
   },
   rowDesc: {
     fontSize: 12,
+  },
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: Spacing.md,
+    gap: Spacing.md,
   },
   aboutRow: {
     flexDirection: "row",
