@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { View, StyleSheet, FlatList, Alert, Platform } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, StyleSheet, FlatList, Alert, Platform, RefreshControl } from "react-native";
 import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
@@ -20,6 +20,7 @@ export default function CollectionScreen() {
   const [coupons, setCoupons] = useState<CollectedCoupon[]>([]);
   const [selectedCoupon, setSelectedCoupon] = useState<CollectedCoupon | null>(null);
   const [showRedemption, setShowRedemption] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -70,9 +71,17 @@ export default function CollectionScreen() {
     await loadCoupons();
   };
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadCoupons();
+    setRefreshing(false);
+  }, []);
+
   return (
     <>
-    <ScreenScrollView>
+    <ScreenScrollView
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
+    >
       {/* Hero stats */}
       <Animated.View entering={FadeInDown.duration(500)}>
         <View

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { View, StyleSheet, Pressable, Share, Platform, ViewStyle } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { View, StyleSheet, Pressable, Share, Platform, ViewStyle, RefreshControl } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -22,6 +22,8 @@ export default function SocialScreen() {
   const [gamification, setGamification] = useState<GamificationState | null>(null);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushSupported, setPushSupported] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     GamificationService.getState().then(setGamification);
@@ -53,8 +55,17 @@ export default function SocialScreen() {
     } catch {}
   };
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await GamificationService.getState().then(setGamification);
+    setRefreshKey((k) => k + 1); // forces Leaderboard + ActivityFeed to re-fetch
+    setRefreshing(false);
+  }, []);
+
   return (
-    <ScreenScrollView>
+    <ScreenScrollView
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.primary} />}
+    >
       {/* Header */}
       <Animated.View entering={FadeInDown.duration(500)} style={styles.header}>
         <View>
@@ -148,6 +159,7 @@ export default function SocialScreen() {
       <Animated.View entering={FadeInDown.duration(400).delay(200)}>
         {activeTab === "leaderboard" && (
           <Leaderboard
+            key={`lb-${refreshKey}`}
             userXP={gamification?.xp}
             userLevel={gamification?.level}
             userTier={gamification?.tier}
@@ -155,7 +167,7 @@ export default function SocialScreen() {
           />
         )}
 
-        {activeTab === "activity" && <ActivityFeed />}
+        {activeTab === "activity" && <ActivityFeed key={`af-${refreshKey}`} />}
 
         {activeTab === "badges" && gamification && (
           <View style={styles.badgeGrid}>

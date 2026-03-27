@@ -12,6 +12,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WebFontLoader } from "@/components/WebFontLoader";
 import { AuthService } from "@/services/authService";
 import { PushService } from "@/services/pushService";
+import { ToastProvider } from "@/contexts/ToastContext";
 
 interface AuthContextType {
   signOut: () => Promise<void>;
@@ -62,15 +63,17 @@ export default function App() {
     <SafeAreaProvider>
         <GestureHandlerRootView style={styles.root}>
           <KeyboardProvider>
-            {isAuthenticated ? (
-              <AuthContext.Provider value={{ signOut: handleSignOut }}>
-                <NavigationContainer>
-                  <MainTabNavigator />
-                </NavigationContainer>
-              </AuthContext.Provider>
-            ) : (
-              <LoginScreen onLoginSuccess={handleLoginSuccess} />
-            )}
+            <ToastProvider>
+              {isAuthenticated ? (
+                <AuthContext.Provider value={{ signOut: handleSignOut }}>
+                  <NavigationContainer>
+                    <MainTabNavigator />
+                  </NavigationContainer>
+                </AuthContext.Provider>
+              ) : (
+                <LoginScreen onLoginSuccess={handleLoginSuccess} />
+              )}
+            </ToastProvider>
             <StatusBar style="auto" />
           </KeyboardProvider>
         </GestureHandlerRootView>

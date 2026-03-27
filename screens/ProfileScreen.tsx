@@ -14,6 +14,7 @@ import { useAuth } from "../App";
 import ChatScreen from "./ChatScreen";
 import MerchantScreen from "./MerchantScreen";
 import MerchantOnboardingScreen from "./MerchantOnboardingScreen";
+import SettingsScreen from "./SettingsScreen";
 
 function StatBadge({
   icon,
@@ -121,6 +122,7 @@ export default function ProfileScreen() {
   const [showChatModal, setShowChatModal] = useState(false);
   const [showMerchantModal, setShowMerchantModal] = useState(false);
   const [showOnboardingModal, setShowOnboardingModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const isMerchant = user?.role === "merchant";
   const [stats, setStats] = useState({ coupons: 0, savings: 0, visits: 0 });
 
@@ -282,7 +284,10 @@ export default function ProfileScreen() {
 
       {/* Menu */}
       <Animated.View entering={FadeInDown.duration(500).delay(300)} style={styles.menuSection}>
-        <MenuItem icon="settings" label="Settings" onPress={() => Alert.alert("Settings", "Settings screen")} />
+        <MenuItem icon="settings" label="Settings" onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          setShowSettingsModal(true);
+        }} />
         <MenuItem
           icon="help-circle"
           label="Help & Support"
@@ -409,6 +414,37 @@ export default function ProfileScreen() {
               loadProfile(); // Reload to pick up merchant role
             }}
           />
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showSettingsModal}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowSettingsModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
+          <View
+            style={[
+              styles.modalHeader,
+              {
+                backgroundColor: theme.backgroundDefault,
+                borderBottomColor: theme.border,
+              },
+            ]}
+          >
+            <ThemedText type="h3">Settings</ThemedText>
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setShowSettingsModal(false);
+              }}
+              style={styles.closeButton}
+            >
+              <Feather name="x" size={24} color={theme.text} />
+            </Pressable>
+          </View>
+          <SettingsScreen />
         </View>
       </Modal>
     </ScreenScrollView>
