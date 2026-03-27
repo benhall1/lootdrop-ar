@@ -8,6 +8,7 @@ import { StatusBar } from "expo-status-bar";
 
 import MainTabNavigator from "@/navigation/MainTabNavigator";
 import LoginScreen from "@/screens/LoginScreen";
+import OnboardingScreen, { hasSeenOnboarding } from "@/screens/OnboardingScreen";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { WebFontLoader } from "@/components/WebFontLoader";
 import { AuthService } from "@/services/authService";
@@ -24,9 +25,14 @@ export const useAuth = () => useContext(AuthContext);
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
-    // Check initial auth state
+    // Check onboarding + auth state
+    hasSeenOnboarding().then((seen) => {
+      if (!seen) setShowOnboarding(true);
+    });
+
     AuthService.isSignedIn().then((signedIn) => {
       setIsAuthenticated(signedIn);
       setIsLoading(false);
@@ -64,7 +70,9 @@ export default function App() {
         <GestureHandlerRootView style={styles.root}>
           <KeyboardProvider>
             <ToastProvider>
-              {isAuthenticated ? (
+              {showOnboarding ? (
+                <OnboardingScreen onComplete={() => setShowOnboarding(false)} />
+              ) : isAuthenticated ? (
                 <AuthContext.Provider value={{ signOut: handleSignOut }}>
                   <NavigationContainer>
                     <MainTabNavigator />

@@ -46,6 +46,15 @@ const XP_CLAIM = 25;
 const XP_STREAK_BONUS = 10; // per streak day
 const XP_REDEEM = 15;
 const XP_BADGE = 50;
+const XP_DAILY_BONUS = 10;
+
+const DAILY_BONUS_KEY = "@lootdrop_last_daily_bonus";
+
+export interface DailyBonusResult {
+  awarded: boolean;
+  xp: number;
+  currentStreak: number;
+}
 
 function getDefaultState(): GamificationState {
   return {
@@ -270,6 +279,30 @@ export class GamificationService {
   static getXPForCurrentLevel(level: number): number {
     if (level <= 1) return 0;
     return XP_PER_LEVEL[level - 1];
+  }
+
+  /**
+   * Check and award daily login bonus. Returns result with whether XP was awarded.
+   */
+  static async checkDailyBonus(): Promise<DailyBonusResult> {
+    const today = getTodayStr();
+    try {
+      const lastBonus = await AsyncStorage.getItem(DAILY_BONUS_KEY);
+      if (lastBonus === today) {
+        const state = await this.getState();
+        return { awarded: false, xp: 0, currentStreak: state.streak };
+      }
+    } catch {}
+
+    // Award the bonus
+    const state = await this.getState();
+    state.xp += XP_DAILY_BONUS;
+    state.level = calculateLevel(state.xp);
+    state.tier = calculateTier(state.level);
+    await this.saveState(state);
+    await AsyncStorage.setItem(DAILY_BONUS_KEY, today);
+
+    return { awarded: true, xp: XP_DAILY_BONUS, currentStreak: state.streak };
   }
 
   /**

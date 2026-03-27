@@ -41,7 +41,8 @@ import {
 import { LootBoxService } from "../services/lootBoxService";
 import { ClaimService } from "../services/claimService";
 import { DemoService } from "../services/demoService";
-import { GamificationService, GamificationState, ClaimResult } from "../services/gamificationService";
+import { GamificationService, GamificationState, ClaimResult, DailyBonusResult } from "../services/gamificationService";
+import { DailyBonusModal } from "../components/DailyBonusModal";
 import { SoundService } from "../services/soundService";
 import { calculateDistance, formatDistance } from "../services/geolocation";
 import { LocationService } from "../services/locationService";
@@ -202,6 +203,7 @@ export default function DiscoverScreen({ navigation }: any) {
     box: LootBox | null;
     claimResult: ClaimResult | null;
   }>({ visible: false, box: null, claimResult: null });
+  const [dailyBonus, setDailyBonus] = useState<DailyBonusResult | null>(null);
 
   // Scanning text shimmer
   const shimmer = useSharedValue(0);
@@ -240,9 +242,16 @@ export default function DiscoverScreen({ navigation }: any) {
     return () => window.removeEventListener("deviceorientation", handler);
   }, [viewMode]);
 
-  // Load gamification state
+  // Load gamification state + check daily bonus
   useEffect(() => {
     GamificationService.getState().then(setGamification);
+    GamificationService.checkDailyBonus().then((result) => {
+      if (result.awarded) {
+        setDailyBonus(result);
+        // Refresh gamification state after bonus
+        GamificationService.getState().then(setGamification);
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -607,6 +616,14 @@ export default function DiscoverScreen({ navigation }: any) {
           right: Spacing.lg,
           bottom: tabBarHeight + Spacing.lg,
         }}
+      />
+
+      {/* Daily bonus modal */}
+      <DailyBonusModal
+        visible={!!dailyBonus?.awarded}
+        xp={dailyBonus?.xp || 0}
+        streak={dailyBonus?.currentStreak || 0}
+        onClose={() => setDailyBonus(null)}
       />
 
       {/* Claim celebration modal */}
