@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { StyleSheet } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
@@ -78,10 +78,12 @@ export default function App() {
               ) : isAuthenticated ? (
                 <AuthContext.Provider value={{ signOut: handleSignOut }}>
                   <GuidedTourProvider>
-                    <NavigationContainer>
-                      <MainTabNavigator />
-                    </NavigationContainer>
-                    <TourOverlay />
+                    <View style={styles.tourContainer}>
+                      <NavigationContainer>
+                        <MainTabNavigator />
+                      </NavigationContainer>
+                      <TourOverlay />
+                    </View>
                   </GuidedTourProvider>
                 </AuthContext.Provider>
               ) : (
@@ -99,5 +101,9 @@ export default function App() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+  },
+  tourContainer: {
+    flex: 1,
+    position: "relative" as const,
   },
 });

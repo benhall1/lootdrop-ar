@@ -163,7 +163,7 @@ export default function SettingsScreen() {
           <Pressable
             onPress={async () => {
               await resetTour();
-              toast.success("Tour will replay on next visit to Discover");
+              toast.success("Tour restarted!");
             }}
             style={[styles.actionRow, { borderColor: theme.border }]}
           >

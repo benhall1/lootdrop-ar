@@ -189,8 +189,7 @@ export default function DiscoverScreen({ navigation }: any) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
-  const { isTourActive, currentStepData, startTour, nextStep, tourCompleted } = useTour();
-  const [tourStarted, setTourStarted] = useState(false);
+  const { tourCompleted } = useTour();
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [nearbyLootBoxes, setNearbyLootBoxes] = useState<LootBox[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -309,19 +308,6 @@ export default function DiscoverScreen({ navigation }: any) {
     fetchNearby();
   }, [fetchNearby]);
 
-  // Reset tourStarted when tour is reset (e.g. via Settings > Replay Tour)
-  useEffect(() => {
-    if (!tourCompleted) setTourStarted(false);
-  }, [tourCompleted]);
-
-  // Start guided tour after first load (loot boxes ready, daily bonus dismissed)
-  useEffect(() => {
-    if (!tourStarted && !tourCompleted && nearbyLootBoxes.length > 0 && !dailyBonus?.awarded) {
-      setTourStarted(true);
-      const timer = setTimeout(() => startTour(), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [nearbyLootBoxes, tourStarted, tourCompleted, startTour, dailyBonus]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -390,10 +376,6 @@ export default function DiscoverScreen({ navigation }: any) {
       if (claimResult.newBadges.length > 0) setTimeout(() => SoundService.badgeUnlock(), 600);
 
       setCelebration({ visible: true, box, claimResult });
-      // Advance tour when user claims a box on the "claim-box" step
-      if (isTourActive && currentStepData?.id === "claim-box") {
-        nextStep();
-      }
       return;
     }
 
@@ -418,10 +400,6 @@ export default function DiscoverScreen({ navigation }: any) {
       if (claimResult.newBadges.length > 0) setTimeout(() => SoundService.badgeUnlock(), 600);
 
       setCelebration({ visible: true, box, claimResult });
-      // Advance tour when user claims a box on the "claim-box" step
-      if (isTourActive && currentStepData?.id === "claim-box") {
-        nextStep();
-      }
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       SoundService.error();
@@ -491,10 +469,6 @@ export default function DiscoverScreen({ navigation }: any) {
                 SoundService.tap();
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setViewMode(viewMode === "radar" ? "camera" : "radar");
-                // Advance tour when user taps AR toggle on the "try-ar" step
-                if (isTourActive && currentStepData?.id === "try-ar") {
-                  nextStep();
-                }
               }}
               style={[
                 styles.modeToggle,
