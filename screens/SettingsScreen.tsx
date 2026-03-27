@@ -10,6 +10,7 @@ import { useTheme } from "../hooks/useTheme";
 import { useToast } from "../contexts/ToastContext";
 import { PushService } from "../services/pushService";
 import { Spacing, BorderRadius, Fonts } from "../constants/theme";
+import { useTour } from "../contexts/GuidedTourContext";
 
 const PREFS_KEY = "@lootdrop_settings";
 
@@ -79,6 +80,7 @@ function SettingRow({
 export default function SettingsScreen() {
   const { theme } = useTheme();
   const toast = useToast();
+  const { resetTour } = useTour();
   const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFS);
 
   useEffect(() => {
@@ -160,7 +162,7 @@ export default function SettingsScreen() {
         <View style={[styles.section, { backgroundColor: theme.backgroundDefault, borderColor: theme.border }]}>
           <Pressable
             onPress={async () => {
-              await AsyncStorage.removeItem("@lootdrop_tour_complete");
+              await resetTour();
               toast.success("Tour will replay on next visit to Discover");
             }}
             style={[styles.actionRow, { borderColor: theme.border }]}

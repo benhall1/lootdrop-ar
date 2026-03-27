@@ -309,6 +309,11 @@ export default function DiscoverScreen({ navigation }: any) {
     fetchNearby();
   }, [fetchNearby]);
 
+  // Reset tourStarted when tour is reset (e.g. via Settings > Replay Tour)
+  useEffect(() => {
+    if (!tourCompleted) setTourStarted(false);
+  }, [tourCompleted]);
+
   // Start guided tour after first load (loot boxes ready, daily bonus dismissed)
   useEffect(() => {
     if (!tourStarted && !tourCompleted && nearbyLootBoxes.length > 0 && !dailyBonus?.awarded) {

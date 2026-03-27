@@ -77,6 +77,7 @@ interface GuidedTourContextType {
   nextStep: () => void;
   skipTour: () => void;
   completeTour: () => void;
+  resetTour: () => void;
   tourCompleted: boolean;
 }
 
@@ -89,6 +90,7 @@ const GuidedTourContext = createContext<GuidedTourContextType>({
   nextStep: () => {},
   skipTour: () => {},
   completeTour: () => {},
+  resetTour: () => {},
   tourCompleted: false,
 });
 
@@ -143,10 +145,16 @@ export function GuidedTourProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const startTour = useCallback(() => {
-    if (tourCompleted) return;
     setCurrentStep(0);
     setIsTourActive(true);
-  }, [tourCompleted]);
+  }, []);
+
+  const resetTour = useCallback(async () => {
+    setTourCompleted(false);
+    setIsTourActive(false);
+    setCurrentStep(0);
+    await AsyncStorage.removeItem(TOUR_COMPLETE_KEY);
+  }, []);
 
   const nextStep = useCallback(() => {
     if (autoAdvanceTimer.current) {
@@ -193,6 +201,7 @@ export function GuidedTourProvider({ children }: { children: React.ReactNode }) 
         nextStep,
         skipTour,
         completeTour,
+        resetTour,
         tourCompleted,
       }}
     >
