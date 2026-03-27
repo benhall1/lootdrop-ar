@@ -64,27 +64,36 @@ export class AuthService {
   static async signInWithEmail(
     email: string,
     password: string
-  ): Promise<User | null> {
+  ): Promise<{ user: User | null; needsConfirmation?: boolean }> {
     // Try sign in first
     const { data: signInData, error: signInError } =
       await supabase.auth.signInWithPassword({ email, password });
 
     if (signInData.session) {
-      return await this.sessionToUser(signInData.session);
+      const user = await this.sessionToUser(signInData.session);
+      return { user };
     }
 
-    // If sign-in fails, try sign up
+    // If sign-in fails with "Invalid login credentials", try sign up
     if (signInError) {
       const { data: signUpData, error: signUpError } =
         await supabase.auth.signUp({ email, password });
 
       if (signUpError) throw signUpError;
+
+      // If session exists, email confirmation is disabled — user is signed in
       if (signUpData.session) {
-        return await this.sessionToUser(signUpData.session);
+        const user = await this.sessionToUser(signUpData.session);
+        return { user };
+      }
+
+      // No session means email confirmation is required
+      if (signUpData.user && !signUpData.session) {
+        return { user: null, needsConfirmation: true };
       }
     }
 
-    return null;
+    return { user: null };
   }
 
   /**

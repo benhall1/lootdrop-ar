@@ -110,6 +110,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleAppleSignIn = async () => {
@@ -133,11 +134,20 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
       Alert.alert("Error", "Please enter your email and password.");
       return;
     }
+    if (password.length < 6) {
+      Alert.alert("Error", "Password must be at least 6 characters.");
+      return;
+    }
 
     setIsLoading(true);
     try {
-      const user = await AuthService.signInWithEmail(email.trim(), password);
-      if (user) {
+      const result = await AuthService.signInWithEmail(email.trim(), password);
+      if (result?.needsConfirmation) {
+        Alert.alert(
+          "Check Your Email",
+          "We sent a confirmation link to " + email.trim() + ". Tap the link to activate your account, then sign in."
+        );
+      } else if (result?.user) {
         onLoginSuccess();
       }
     } catch (error: any) {
@@ -292,22 +302,36 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                   },
                 ]}
               />
-              <TextInput
-                placeholder="Password"
-                placeholderTextColor={theme.textSecondary}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: theme.backgroundSecondary,
-                    color: theme.text,
-                    borderColor: theme.border,
-                    fontFamily: Fonts?.sans,
-                  },
-                ]}
-              />
+              <View style={styles.passwordWrapper}>
+                <TextInput
+                  placeholder="Password"
+                  placeholderTextColor={theme.textSecondary}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  style={[
+                    styles.input,
+                    styles.passwordInput,
+                    {
+                      backgroundColor: theme.backgroundSecondary,
+                      color: theme.text,
+                      borderColor: theme.border,
+                      fontFamily: Fonts?.sans,
+                    },
+                  ]}
+                />
+                <Pressable
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeButton}
+                  hitSlop={8}
+                >
+                  <Feather
+                    name={showPassword ? "eye-off" : "eye"}
+                    size={20}
+                    color={theme.textSecondary}
+                  />
+                </Pressable>
+              </View>
               <Button
                 onPress={handleEmailSignIn}
                 style={[styles.emailButton, { opacity: isLoading ? 0.6 : 1 }]}
@@ -477,6 +501,20 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     paddingHorizontal: Spacing.lg,
     fontSize: 16,
+  },
+  passwordWrapper: {
+    width: "100%",
+    position: "relative",
+  },
+  passwordInput: {
+    paddingRight: 50,
+  },
+  eyeButton: {
+    position: "absolute",
+    right: 14,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
   },
   emailButton: {
     marginTop: Spacing.xs,
