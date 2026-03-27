@@ -18,6 +18,7 @@ import { ThemedText } from "../components/ThemedText";
 import { ThemedView } from "../components/ThemedView";
 import { Button } from "../components/Button";
 import { useTheme } from "../hooks/useTheme";
+import { useToast } from "../contexts/ToastContext";
 import { Spacing, BorderRadius, Fonts, Shadows, Gradients, WebShadows } from "../constants/theme";
 import { AuthService } from "../services/authService";
 
@@ -107,6 +108,7 @@ function FloatingChest() {
 
 export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const { theme } = useTheme();
+  const toast = useToast();
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -116,6 +118,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const handleAppleSignIn = async () => {
     try {
       await AuthService.signInWithApple();
+      onLoginSuccess();
     } catch (error) {
       Alert.alert("Sign In Failed", "Could not sign in with Apple. Please try again.");
     }
@@ -124,14 +127,20 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const handleGoogleSignIn = async () => {
     try {
       await AuthService.signInWithGoogle();
+      onLoginSuccess();
     } catch (error) {
       Alert.alert("Sign In Failed", "Could not sign in with Google. Please try again.");
     }
   };
 
   const handleEmailSignIn = async () => {
+    // If both fields are empty, treat "Let's Go!" as guest sign-in
+    if (!email.trim() && !password.trim()) {
+      return handleGuestSignIn();
+    }
+
     if (!email.trim() || !password.trim()) {
-      Alert.alert("Error", "Please enter your email and password.");
+      Alert.alert("Error", "Please enter both email and password, or leave both empty to continue as guest.");
       return;
     }
     if (password.length < 6) {
@@ -142,19 +151,23 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     setIsLoading(true);
     try {
       const result = await AuthService.signInWithEmail(email.trim(), password);
-      if (result?.needsConfirmation) {
-        Alert.alert(
-          "Check Your Email",
-          "We sent a confirmation link to " + email.trim() + ". Tap the link to activate your account, then sign in."
-        );
-      } else if (result?.user) {
+      if (result?.user) {
+        onLoginSuccess();
+      } else {
+        // Sign-in returned no user — fall back to guest
+        await AuthService.signInAsGuest();
+        toast.info("Signed in as guest");
         onLoginSuccess();
       }
     } catch (error: any) {
-      Alert.alert(
-        "Sign In Failed",
-        error.message || "Could not sign in. Please try again."
-      );
+      // Sign-in failed — fall back to guest automatically
+      try {
+        await AuthService.signInAsGuest();
+        toast.info("Signed in as guest");
+        onLoginSuccess();
+      } catch (guestError) {
+        Alert.alert("Error", "Could not sign in. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }

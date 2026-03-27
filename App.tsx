@@ -14,6 +14,8 @@ import { WebFontLoader } from "@/components/WebFontLoader";
 import { AuthService } from "@/services/authService";
 import { PushService } from "@/services/pushService";
 import { ToastProvider } from "@/contexts/ToastContext";
+import { GuidedTourProvider } from "@/contexts/GuidedTourContext";
+import { TourOverlay } from "@/components/TourOverlay";
 
 interface AuthContextType {
   signOut: () => Promise<void>;
@@ -28,20 +30,21 @@ export default function App() {
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
-    // Check onboarding + auth state
-    hasSeenOnboarding().then((seen) => {
-      if (!seen) setShowOnboarding(true);
-    });
-
-    AuthService.isSignedIn().then((signedIn) => {
-      setIsAuthenticated(signedIn);
+    // Wait for both onboarding check and auth check before showing anything
+    Promise.all([
+      hasSeenOnboarding().then((seen) => {
+        if (!seen) setShowOnboarding(true);
+      }),
+      AuthService.isSignedIn().then((signedIn) => {
+        setIsAuthenticated(signedIn);
+      }),
+    ]).then(() => {
       setIsLoading(false);
     });
 
     // Listen for auth state changes (sign in, sign out, token refresh)
     const unsubscribe = AuthService.onAuthStateChange((session) => {
       setIsAuthenticated(!!session);
-      setIsLoading(false);
     });
 
     // Register service worker for push notifications
@@ -74,9 +77,12 @@ export default function App() {
                 <OnboardingScreen onComplete={() => setShowOnboarding(false)} />
               ) : isAuthenticated ? (
                 <AuthContext.Provider value={{ signOut: handleSignOut }}>
-                  <NavigationContainer>
-                    <MainTabNavigator />
-                  </NavigationContainer>
+                  <GuidedTourProvider>
+                    <NavigationContainer>
+                      <MainTabNavigator />
+                    </NavigationContainer>
+                    <TourOverlay />
+                  </GuidedTourProvider>
                 </AuthContext.Provider>
               ) : (
                 <LoginScreen onLoginSuccess={handleLoginSuccess} />

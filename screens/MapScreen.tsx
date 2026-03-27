@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Linking, Platform } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Linking, Platform, ActivityIndicator } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -47,6 +47,7 @@ export default function MapScreen({ navigation }: any) {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [selectedLootBox, setSelectedLootBox] = useState<LootBox | null>(null);
   const [mapRegion, setMapRegion] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const categories: LocationCategory[] = ["restaurant", "retail", "entertainment", "services"];
 
   const filteredLootBoxes = selectedCategory
@@ -98,9 +99,15 @@ export default function MapScreen({ navigation }: any) {
     loadFavorites();
   }, []);
 
+  // Default location used when GPS is unavailable (NYC)
+  const DEFAULT_LOCATION = { latitude: 40.7128, longitude: -74.006 };
+
   /** Fetch loot boxes from Supabase, fall back to demo data */
   useEffect(() => {
     const fetchLootBoxes = async () => {
+      setIsLoading(true);
+      // Use real location if available, otherwise fall back to default for demo boxes
+      const loc = userLocation || DEFAULT_LOCATION;
       try {
         const boxes = userLocation
           ? await LootBoxService.getNearby(userLocation.latitude, userLocation.longitude)
@@ -108,15 +115,15 @@ export default function MapScreen({ navigation }: any) {
 
         if (boxes.length > 0) {
           setLootBoxes(boxes);
-        } else if (userLocation) {
-          const demo = await DemoService.getDemoBoxes(userLocation.latitude, userLocation.longitude);
+        } else {
+          const demo = await DemoService.getDemoBoxes(loc.latitude, loc.longitude);
           setLootBoxes(demo);
         }
       } catch {
-        if (userLocation) {
-          const demo = await DemoService.getDemoBoxes(userLocation.latitude, userLocation.longitude);
-          setLootBoxes(demo);
-        }
+        const demo = await DemoService.getDemoBoxes(loc.latitude, loc.longitude);
+        setLootBoxes(demo);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -211,6 +218,14 @@ export default function MapScreen({ navigation }: any) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           }}
         />
+        {isLoading && lootBoxes.length === 0 && (
+          <View style={[styles.loadingOverlay, { backgroundColor: theme.backgroundRoot + "CC" }]}>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <ThemedText style={[styles.loadingText, { color: theme.textSecondary }]}>
+              {userLocation ? "Finding loot drops..." : "Getting your location..."}
+            </ThemedText>
+          </View>
+        )}
       </View>
 
       {selectedLootBox && (
@@ -355,6 +370,17 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: Spacing.md,
+    zIndex: 10,
+  },
+  loadingText: {
+    fontSize: 14,
+    fontWeight: "600",
   },
   loadingContainer: {
     flex: 1,

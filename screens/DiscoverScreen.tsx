@@ -48,6 +48,7 @@ import { calculateDistance, formatDistance } from "../services/geolocation";
 import { LocationService } from "../services/locationService";
 import { StorageService } from "../services/storageService";
 import { CategoryChip } from "../components/CategoryChip";
+import { useTour } from "../contexts/GuidedTourContext";
 import { UserLocation, LootBox, LocationCategory } from "../types";
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -188,6 +189,8 @@ export default function DiscoverScreen({ navigation }: any) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
+  const { isTourActive, currentStepData, startTour, nextStep, tourCompleted } = useTour();
+  const [tourStarted, setTourStarted] = useState(false);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [nearbyLootBoxes, setNearbyLootBoxes] = useState<LootBox[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -266,32 +269,36 @@ export default function DiscoverScreen({ navigation }: any) {
     return () => sub?.remove();
   }, []);
 
+  // Default location used when GPS is unavailable (NYC)
+  const DEFAULT_LOCATION = { latitude: 40.7128, longitude: -74.006 };
+
   const fetchNearby = useCallback(async () => {
-    if (!userLocation) return;
+    // Use real location if available, otherwise fall back to default for demo boxes
+    const loc = userLocation || DEFAULT_LOCATION;
     try {
-      let boxes = await LootBoxService.getNearby(
-        userLocation.latitude,
-        userLocation.longitude,
-        2
-      );
+      let boxes: LootBox[] = [];
+      if (userLocation) {
+        boxes = await LootBoxService.getNearby(
+          userLocation.latitude,
+          userLocation.longitude,
+          2
+        );
+      }
       if (boxes.length === 0) {
-        // No real drops nearby — switch to demo mode
-        boxes = await DemoService.getDemoBoxes(userLocation.latitude, userLocation.longitude);
+        // No real drops nearby (or no location yet) — switch to demo mode
+        boxes = await DemoService.getDemoBoxes(loc.latitude, loc.longitude);
         setIsDemoMode(true);
       } else {
         setIsDemoMode(false);
       }
       const sorted = boxes.sort((a, b) => {
-        const dA = calculateDistance(userLocation, { latitude: a.latitude, longitude: a.longitude });
-        const dB = calculateDistance(userLocation, { latitude: b.latitude, longitude: b.longitude });
+        const dA = calculateDistance(loc, { latitude: a.latitude, longitude: a.longitude });
+        const dB = calculateDistance(loc, { latitude: b.latitude, longitude: b.longitude });
         return dA - dB;
       });
       setNearbyLootBoxes(sorted);
     } catch {
-      const boxes = await DemoService.getDemoBoxes(
-        userLocation.latitude,
-        userLocation.longitude
-      );
+      const boxes = await DemoService.getDemoBoxes(loc.latitude, loc.longitude);
       setNearbyLootBoxes(boxes);
       setIsDemoMode(true);
     }
@@ -300,6 +307,16 @@ export default function DiscoverScreen({ navigation }: any) {
   useEffect(() => {
     fetchNearby();
   }, [fetchNearby]);
+
+  // Start guided tour after first load (location + loot boxes ready)
+  useEffect(() => {
+    if (!tourStarted && !tourCompleted && userLocation && nearbyLootBoxes.length > 0) {
+      setTourStarted(true);
+      // Small delay so the UI renders first
+      const timer = setTimeout(() => startTour(), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [userLocation, nearbyLootBoxes, tourStarted, tourCompleted, startTour]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -368,6 +385,10 @@ export default function DiscoverScreen({ navigation }: any) {
       if (claimResult.newBadges.length > 0) setTimeout(() => SoundService.badgeUnlock(), 600);
 
       setCelebration({ visible: true, box, claimResult });
+      // Advance tour when user claims a box on the "claim-box" step
+      if (isTourActive && currentStepData?.id === "claim-box") {
+        nextStep();
+      }
       return;
     }
 
@@ -392,6 +413,10 @@ export default function DiscoverScreen({ navigation }: any) {
       if (claimResult.newBadges.length > 0) setTimeout(() => SoundService.badgeUnlock(), 600);
 
       setCelebration({ visible: true, box, claimResult });
+      // Advance tour when user claims a box on the "claim-box" step
+      if (isTourActive && currentStepData?.id === "claim-box") {
+        nextStep();
+      }
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       SoundService.error();
@@ -461,6 +486,10 @@ export default function DiscoverScreen({ navigation }: any) {
                 SoundService.tap();
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 setViewMode(viewMode === "radar" ? "camera" : "radar");
+                // Advance tour when user taps AR toggle on the "try-ar" step
+                if (isTourActive && currentStepData?.id === "try-ar") {
+                  nextStep();
+                }
               }}
               style={[
                 styles.modeToggle,

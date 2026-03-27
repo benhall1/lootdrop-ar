@@ -59,38 +59,20 @@ export class AuthService {
 
   /**
    * Sign in with email + password.
-   * Creates account if it doesn't exist (signUp), otherwise signs in.
+   * Only attempts sign-in (no sign-up). Throws on failure so caller can fall back to guest.
    */
   static async signInWithEmail(
     email: string,
     password: string
-  ): Promise<{ user: User | null; needsConfirmation?: boolean }> {
-    // Try sign in first
+  ): Promise<{ user: User | null }> {
     const { data: signInData, error: signInError } =
       await supabase.auth.signInWithPassword({ email, password });
+
+    if (signInError) throw signInError;
 
     if (signInData.session) {
       const user = await this.sessionToUser(signInData.session);
       return { user };
-    }
-
-    // If sign-in fails with "Invalid login credentials", try sign up
-    if (signInError) {
-      const { data: signUpData, error: signUpError } =
-        await supabase.auth.signUp({ email, password });
-
-      if (signUpError) throw signUpError;
-
-      // If session exists, email confirmation is disabled — user is signed in
-      if (signUpData.session) {
-        const user = await this.sessionToUser(signUpData.session);
-        return { user };
-      }
-
-      // No session means email confirmation is required
-      if (signUpData.user && !signUpData.session) {
-        return { user: null, needsConfirmation: true };
-      }
     }
 
     return { user: null };
