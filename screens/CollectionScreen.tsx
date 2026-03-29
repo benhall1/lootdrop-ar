@@ -190,17 +190,17 @@ export default function CollectionScreen() {
 
       {coupons.length === 0 && (
         <Animated.View entering={FadeInUp.duration(600).delay(200)} style={styles.emptyState}>
-          <ThemedText style={{ fontSize: 64 }}>🗝️</ThemedText>
+          <ThemedText style={{ fontSize: 80 }}>🎁</ThemedText>
           <ThemedText
             type="h3"
             style={[styles.emptyText, { fontFamily: Fonts?.display }]}
           >
-            Your Treasure Awaits
+            No Loot Yet
           </ThemedText>
           <ThemedText
             style={[styles.emptySubtext, { color: theme.textSecondary }]}
           >
-            Find loot boxes on the radar to start{"\n"}collecting epic deals and coupons!
+            Head to the Discover tab and tap a loot box to claim your first deal. They're closer than you think!
           </ThemedText>
         </Animated.View>
       )}

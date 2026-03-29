@@ -15,7 +15,7 @@ import { Fonts, Spacing, BorderRadius, WebShadows } from "../constants/theme";
 import { LootBox, UserLocation } from "../types";
 import { calculateDistance } from "../services/geolocation";
 
-const RADAR_SIZE = 300;
+const RADAR_SIZE = 340;
 const RADAR_RADIUS = RADAR_SIZE / 2;
 const MAX_RANGE_KM = 2; // 2km radar range
 

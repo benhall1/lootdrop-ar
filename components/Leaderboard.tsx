@@ -54,6 +54,7 @@ export function Leaderboard({ userXP = 0, userLevel = 1, userTier = "bronze", us
                 ? theme.primary + "12"
                 : theme.backgroundDefault,
               borderColor: entry.isCurrentUser ? theme.primary + "40" : theme.border,
+              ...(entry.rank <= 3 ? { borderLeftWidth: 3, borderLeftColor: theme.secondary } : {}),
               ...Platform.select({
                 web: entry.isCurrentUser
                   ? {
@@ -102,7 +103,7 @@ export function Leaderboard({ userXP = 0, userLevel = 1, userTier = "bronze", us
                 numberOfLines={1}
                 ellipsizeMode="tail"
               >
-                {entry.isCurrentUser ? "You" : entry.name}
+                {entry.rank === 1 && !entry.isCurrentUser ? "👑 " : ""}{entry.isCurrentUser ? "You" : entry.name}
               </ThemedText>
               <ThemedText style={[lbStyles.level, { color: theme.textSecondary }]}>
                 Lv.{entry.level} · {entry.claims} claims
@@ -115,7 +116,14 @@ export function Leaderboard({ userXP = 0, userLevel = 1, userTier = "bronze", us
             style={[
               lbStyles.xp,
               {
-                color: entry.isCurrentUser ? theme.primary : theme.secondary,
+                color: entry.isCurrentUser
+                  ? theme.primary
+                  : entry.rank === 1
+                    ? theme.secondary
+                    : entry.rank <= 3
+                      ? theme.textSecondary
+                      : theme.secondary,
+                fontSize: entry.rank === 2 ? 14 : 13,
                 fontFamily: Fonts?.mono,
               },
             ]}

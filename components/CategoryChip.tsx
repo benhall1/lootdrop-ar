@@ -1,10 +1,10 @@
 import React from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { ThemedText } from "./ThemedText";
 import { useTheme } from "../hooks/useTheme";
-import { Spacing, BorderRadius, Layout, Fonts } from "../constants/theme";
+import { Spacing, BorderRadius, Layout, Fonts, WebShadows } from "../constants/theme";
 import { LocationCategory } from "../types";
 
 interface CategoryChipProps {
@@ -37,8 +37,13 @@ export function CategoryChip({ category, selected, onPress }: CategoryChipProps)
         {
           backgroundColor: selected ? theme.primary : theme.backgroundSecondary,
           borderColor: selected ? theme.primary : theme.border,
+          borderWidth: selected ? 2 : 1.5,
           opacity: pressed ? 0.8 : 1,
           transform: [{ scale: pressed ? 0.95 : 1 }],
+          ...Platform.select({
+            web: selected ? { boxShadow: WebShadows.neonOrange } : {},
+            default: {},
+          }),
         },
       ]}
     >

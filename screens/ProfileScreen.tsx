@@ -240,9 +240,9 @@ export default function ProfileScreen() {
 
       {/* Stats */}
       <Animated.View entering={FadeInDown.duration(500).delay(100)} style={styles.statsRow}>
-        <StatBadge icon="gift" value={String(stats.coupons)} label="Collected" color={theme.secondary} />
+        <StatBadge icon="gift" value={String(stats.coupons)} label="Claimed" color={theme.secondary} />
         <StatBadge icon="dollar-sign" value={`$${stats.savings}`} label="Saved" color={theme.success} />
-        <StatBadge icon="map-pin" value={String(stats.visits)} label="Redeemed" color={theme.accent} />
+        <StatBadge icon="map-pin" value={String(stats.visits)} label="Used" color={theme.accent} />
       </Animated.View>
 
       {/* Merchant Card */}

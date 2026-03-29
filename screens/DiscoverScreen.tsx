@@ -9,6 +9,7 @@ import {
   RefreshControl,
   TextInput,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, {
@@ -118,6 +119,7 @@ function NearbyCard({
         </ThemedText>
         {box.isActive ? (
           <View style={[cardStyles.liveBadge, { backgroundColor: theme.primary + "20" }]}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: theme.success, marginRight: 3 }} />
             <ThemedText style={[cardStyles.liveText, { color: theme.primary }]}>
               LIVE
             </ThemedText>
@@ -146,7 +148,7 @@ const cardStyles = StyleSheet.create({
     gap: 2,
   },
   name: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700",
   },
   meta: {
@@ -171,6 +173,8 @@ const cardStyles = StyleSheet.create({
     fontSize: 22,
   },
   liveBadge: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 6,
     paddingVertical: 1,
     borderRadius: 6,
@@ -422,7 +426,7 @@ export default function DiscoverScreen({ navigation }: any) {
   const activeCount = filteredLootBoxes.filter((b) => b.isActive).length;
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.backgroundRoot }]}>
+    <LinearGradient colors={Gradients.darkBackground} style={{ flex: 1 }}>
       <ScrollView
         contentContainerStyle={[
           styles.scroll,
@@ -644,7 +648,7 @@ export default function DiscoverScreen({ navigation }: any) {
         businessName={celebration.box?.businessName || ""}
         claimResult={celebration.claimResult}
       />
-    </View>
+    </LinearGradient>
   );
 }
 
