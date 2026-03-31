@@ -12,11 +12,39 @@ if (typeof document !== "undefined" && !document.getElementById(LEAFLET_CSS_ID))
   link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
   document.head.appendChild(link);
 
+  // MarkerCluster CSS
+  const clusterCss = document.createElement("link");
+  clusterCss.rel = "stylesheet";
+  clusterCss.href = "https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css";
+  document.head.appendChild(clusterCss);
+
+  const clusterDefaultCss = document.createElement("link");
+  clusterDefaultCss.rel = "stylesheet";
+  clusterDefaultCss.href = "https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css";
+  document.head.appendChild(clusterDefaultCss);
+
+  // MarkerCluster JS
+  const clusterScript = document.createElement("script");
+  clusterScript.src = "https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js";
+  document.head.appendChild(clusterScript);
+
   const style = document.createElement("style");
   style.textContent = `
     .lootbox-marker { transition: transform 0.2s ease; cursor: pointer; }
     .lootbox-marker:hover { transform: scale(1.15) !important; z-index: 1000 !important; }
     .user-marker { animation: lootdrop-pulse 2s ease-in-out infinite; }
+    .marker-cluster {
+      background: rgba(255, 87, 34, 0.3);
+      border-radius: 50%;
+    }
+    .marker-cluster div {
+      background: #FF5722;
+      color: white;
+      border-radius: 50%;
+      font-weight: 800;
+      font-size: 14px;
+      font-family: 'Nunito', sans-serif;
+    }
     .leaflet-popup-content-wrapper {
       border-radius: 14px !important;
       background: #1A1A2E !important;
@@ -226,6 +254,78 @@ function RecenterButton({ userLocation }: { userLocation: UserLocation | null })
   );
 }
 
+/** Cluster loot box markers using Leaflet.markercluster */
+function MarkerCluster({
+  lootBoxes,
+  onLootBoxPress,
+}: {
+  lootBoxes: LootBox[];
+  onLootBoxPress: (box: LootBox) => void;
+}) {
+  const map = useMap();
+  const clusterGroupRef = useRef<any>(null);
+
+  useEffect(() => {
+    // Wait for L.markerClusterGroup to be available (loaded via CDN script)
+    const tryInit = () => {
+      if (!(L as any).markerClusterGroup) {
+        // Script hasn't loaded yet, retry
+        setTimeout(tryInit, 100);
+        return;
+      }
+
+      // Remove previous cluster group if it exists
+      if (clusterGroupRef.current) {
+        map.removeLayer(clusterGroupRef.current);
+      }
+
+      const clusterGroup = (L as any).markerClusterGroup({
+        maxClusterRadius: 50,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        iconCreateFunction: (cluster: any) => {
+          const count = cluster.getChildCount();
+          let size = 40;
+          if (count >= 10) size = 50;
+          if (count >= 50) size = 60;
+          return L.divIcon({
+            html: `<div style="
+              width: ${size - 10}px; height: ${size - 10}px;
+              display: flex; align-items: center; justify-content: center;
+            ">${count}</div>`,
+            className: "marker-cluster",
+            iconSize: L.point(size, size),
+          });
+        },
+      });
+
+      lootBoxes.forEach((box) => {
+        const marker = L.marker([box.latitude, box.longitude], {
+          icon: lootBoxIcon(box.isActive, box.category),
+        });
+        marker.on("click", () => onLootBoxPress(box));
+        marker.bindPopup(buildPopupContent(box));
+        clusterGroup.addLayer(marker);
+      });
+
+      map.addLayer(clusterGroup);
+      clusterGroupRef.current = clusterGroup;
+    };
+
+    tryInit();
+
+    return () => {
+      if (clusterGroupRef.current) {
+        map.removeLayer(clusterGroupRef.current);
+        clusterGroupRef.current = null;
+      }
+    };
+  }, [lootBoxes, map, onLootBoxPress]);
+
+  return null;
+}
+
 interface LeafletMapViewProps {
   lootBoxes: LootBox[];
   userLocation: UserLocation | null;
@@ -285,21 +385,7 @@ export function LeafletMapView({
 
       <FitBounds userLocation={userLocation} lootBoxes={lootBoxes} />
       <RecenterButton userLocation={userLocation} />
-
-      {lootBoxes.map((box) => (
-        <Marker
-          key={box.id}
-          position={[box.latitude, box.longitude]}
-          icon={lootBoxIcon(box.isActive, box.category)}
-          eventHandlers={{
-            click: () => onLootBoxPress(box),
-          }}
-        >
-          <Popup>
-            <span dangerouslySetInnerHTML={{ __html: buildPopupContent(box) }} />
-          </Popup>
-        </Marker>
-      ))}
+      <MarkerCluster lootBoxes={lootBoxes} onLootBoxPress={onLootBoxPress} />
     </MapContainer>
   );
 }

@@ -16,6 +16,7 @@ import { PushService } from "@/services/pushService";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { GuidedTourProvider } from "@/contexts/GuidedTourContext";
 import { TourOverlay } from "@/components/TourOverlay";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 interface AuthContextType {
   signOut: () => Promise<void>;
@@ -50,6 +51,22 @@ export default function App() {
     // Register service worker for push notifications
     PushService.register();
 
+    // Inject PWA manifest + theme-color meta tag for web
+    if (typeof document !== "undefined") {
+      if (!document.querySelector('link[rel="manifest"]')) {
+        const manifest = document.createElement("link");
+        manifest.rel = "manifest";
+        manifest.href = "/manifest.json";
+        document.head.appendChild(manifest);
+      }
+      if (!document.querySelector('meta[name="theme-color"]')) {
+        const meta = document.createElement("meta");
+        meta.name = "theme-color";
+        meta.content = "#0C0F1A";
+        document.head.appendChild(meta);
+      }
+    }
+
     return unsubscribe;
   }, []);
 
@@ -83,6 +100,7 @@ export default function App() {
                         <MainTabNavigator />
                       </NavigationContainer>
                       <TourOverlay />
+                      <InstallPrompt />
                     </View>
                   </GuidedTourProvider>
                 </AuthContext.Provider>

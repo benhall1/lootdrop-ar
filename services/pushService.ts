@@ -161,4 +161,42 @@ export class PushService {
       tag: "lootdrop-test",
     } as NotificationOptions);
   }
+
+  /**
+   * Trigger a server-side push notification via Supabase Edge Function.
+   * @param type - Notification type: "nearby-loot" | "daily-reminder" | "claim-congrats" | "broadcast"
+   * @param title - Notification title
+   * @param body - Notification body text
+   * @param options - Optional: userId to target, data payload
+   */
+  static async triggerNotification(
+    type: string,
+    title: string,
+    body: string,
+    options?: { userId?: string; data?: Record<string, string> }
+  ): Promise<{ sent: number; failed: number } | null> {
+    if (!isSupabaseConfigured) return null;
+
+    try {
+      const { data, error } = await supabase.functions.invoke("send-push", {
+        body: {
+          type,
+          title,
+          body,
+          userId: options?.userId,
+          data: options?.data,
+        },
+      });
+
+      if (error) {
+        console.warn("[Push] Trigger failed:", error);
+        return null;
+      }
+
+      return data as { sent: number; failed: number };
+    } catch (err) {
+      console.warn("[Push] Trigger error:", err);
+      return null;
+    }
+  }
 }

@@ -1,0 +1,15 @@
+{
+  "name": "LootDrop AR",
+  "short_name": "LootDrop",
+  "description": "Find virtual loot boxes at real businesses. Claim deals, earn XP, level up.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#0C0F1A",
+  "background_color": "#0C0F1A",
+  "categories": ["games", "shopping"],
+  "icons": [
+    { "src": "/assets/images/favicon.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/assets/images/icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

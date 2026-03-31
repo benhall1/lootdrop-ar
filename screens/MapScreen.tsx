@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, StyleSheet, ScrollView, Pressable, Linking, Platform, ActivityIndicator } from "react-native";
+import { View, StyleSheet, ScrollView, Pressable, Linking, Platform, ActivityIndicator, Alert } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -15,10 +15,14 @@ import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { Spacing, BorderRadius } from "../constants/theme";
 import { LootBoxService } from "../services/lootBoxService";
 import { DemoService } from "../services/demoService";
+import { ClaimService } from "../services/claimService";
+import { GamificationService } from "../services/gamificationService";
+import { SoundService } from "../services/soundService";
 import { LocationService } from "../services/locationService";
 import { StorageService } from "../services/storageService";
+import { useToast } from "../contexts/ToastContext";
 import { LocationCategory, LootBox, UserLocation } from "../types";
-import { calculateDistance } from "../services/geolocation";
+import { calculateDistance, formatDistance } from "../services/geolocation";
 
 function DistanceBadge({ distance, theme }: { distance: number; theme: any }) {
   return (
@@ -38,6 +42,7 @@ function DistanceBadge({ distance, theme }: { distance: number; theme: any }) {
 
 export default function MapScreen({ navigation }: any) {
   const { theme } = useTheme();
+  const toast = useToast();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
   const mapRef = useRef<any>(null);
@@ -48,6 +53,7 @@ export default function MapScreen({ navigation }: any) {
   const [selectedLootBox, setSelectedLootBox] = useState<LootBox | null>(null);
   const [mapRegion, setMapRegion] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isClaiming, setIsClaiming] = useState(false);
   const categories: LocationCategory[] = ["restaurant", "retail", "entertainment", "services"];
 
   const filteredLootBoxes = selectedCategory
@@ -161,6 +167,95 @@ export default function MapScreen({ navigation }: any) {
         }
       });
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+  };
+
+  const handleClaimFromMap = async (box: LootBox) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    if (!box.isActive) {
+      toast.info(`${box.businessName}'s loot box is recharging. Check back soon!`);
+      return;
+    }
+    if (!userLocation) {
+      Alert.alert("Location Required", "Enable location to claim loot boxes.");
+      return;
+    }
+
+    const distance = calculateDistance(userLocation, {
+      latitude: box.latitude,
+      longitude: box.longitude,
+    });
+
+    const isDemo = DemoService.isDemoBox(box.id);
+    const claimRadius = isDemo ? 0.5 : 0.1; // 500m for demo, 100m for real
+
+    if (distance > claimRadius) {
+      Alert.alert(
+        box.businessName,
+        `${box.coupon.value}\n${formatDistance(distance)} away\n\n${isDemo ? "Get within 500m to claim this demo drop!" : "Get closer to claim this loot box!"}`,
+        [
+          {
+            text: "Get Directions",
+            onPress: () => handleGetDirections(box),
+          },
+          { text: "OK", style: "cancel" },
+        ]
+      );
+      return;
+    }
+
+    setIsClaiming(true);
+    try {
+      SoundService.chestOpen();
+
+      if (isDemo) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        const demoCoupon = {
+          ...box.coupon,
+          collectedAt: Date.now(),
+          isUsed: false,
+        };
+        await StorageService.addCollectedCoupon(demoCoupon);
+        await GamificationService.recordClaim(box.businessName);
+        SoundService.claimSuccess();
+        Alert.alert(
+          "Loot Claimed!",
+          `You got: ${box.coupon.value} from ${box.businessName}\n\nCheck your Rewards tab to use it.`
+        );
+        setSelectedLootBox(null);
+        return;
+      }
+
+      const result = await ClaimService.claimLootBox(
+        box.id,
+        userLocation.latitude,
+        userLocation.longitude
+      );
+
+      if (result.success) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        if (result.coupon) {
+          await StorageService.addCollectedCoupon(result.coupon);
+        }
+        await GamificationService.recordClaim(box.businessName);
+        SoundService.claimSuccess();
+        Alert.alert(
+          "Loot Claimed!",
+          `You got: ${box.coupon.value} from ${box.businessName}\n\nCheck your Rewards tab to use it.`
+        );
+        setSelectedLootBox(null);
+      } else {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        SoundService.error();
+        Alert.alert("Claim Failed", result.message || "Could not claim this loot box.");
+      }
+    } catch (err) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      SoundService.error();
+      Alert.alert("Error", "Something went wrong. Please try again.");
+    } finally {
+      setIsClaiming(false);
     }
   };
 
@@ -306,12 +401,25 @@ export default function MapScreen({ navigation }: any) {
               )}
             </View>
 
+            {selectedLootBox.isActive && (
+              <Button
+                onPress={() => handleClaimFromMap(selectedLootBox)}
+                disabled={isClaiming}
+                style={[styles.claimButton, { backgroundColor: theme.primary, opacity: isClaiming ? 0.6 : 1 }]}
+              >
+                <Feather name="gift" size={18} color="#FFFFFF" />
+                <ThemedText style={styles.claimButtonText}>
+                  {isClaiming ? "Claiming..." : "Claim This Deal"}
+                </ThemedText>
+              </Button>
+            )}
+
             <Button
               onPress={() => handleGetDirections(selectedLootBox)}
-              style={[styles.directionsButton, { backgroundColor: theme.primary }]}
+              style={[styles.directionsButton, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border, borderWidth: 1 }]}
             >
-              <Feather name="navigation" size={18} color="#FFFFFF" />
-              <ThemedText style={styles.directionsButtonText}>
+              <Feather name="navigation" size={18} color={theme.text} />
+              <ThemedText style={[styles.directionsButtonText, { color: theme.text }]}>
                 Get Directions
               </ThemedText>
             </Button>
@@ -468,7 +576,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
   },
-  directionsButton: {
+  claimButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -476,9 +584,21 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     borderRadius: BorderRadius.md,
   },
-  directionsButtonText: {
+  claimButtonText: {
     color: "#FFFFFF",
     fontSize: 16,
+    fontWeight: "700",
+  },
+  directionsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: Spacing.sm,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+  },
+  directionsButtonText: {
+    fontSize: 14,
     fontWeight: "600",
   },
   closeButton: {
