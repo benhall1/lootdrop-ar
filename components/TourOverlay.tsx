@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import {
   View,
   Pressable,
   StyleSheet,
   Modal,
   useWindowDimensions,
+  Animated as RNAnimated,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "./ThemedText";
@@ -14,7 +15,7 @@ import { Spacing, BorderRadius, Fonts } from "../constants/theme";
 
 /**
  * Arrow indicator that points to a UI element.
- * Positioned at the edge of the modal to direct the user's attention.
+ * Positioned at the edge of the overlay to direct the user's attention.
  */
 function ArrowPointer({
   direction,
@@ -25,7 +26,33 @@ function ArrowPointer({
   label?: string;
   color: string;
 }) {
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
+  const bounce = useRef(new RNAnimated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = RNAnimated.loop(
+      RNAnimated.sequence([
+        RNAnimated.timing(bounce, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        RNAnimated.timing(bounce, {
+          toValue: 0,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [bounce]);
+
+  const isTop = direction === "top-right";
+  const translateY = bounce.interpolate({
+    inputRange: [0, 1],
+    outputRange: isTop ? [0, -8] : [0, 8],
+  });
 
   const getStyle = () => {
     switch (direction) {
@@ -62,10 +89,8 @@ function ArrowPointer({
     }
   };
 
-  const isTop = direction === "top-right";
-
   return (
-    <View style={getStyle()}>
+    <RNAnimated.View style={[getStyle(), { transform: [{ translateY }] }]}>
       {isTop && (
         <>
           <Feather name="arrow-up" size={32} color={color} />
@@ -82,7 +107,7 @@ function ArrowPointer({
           <Feather name="arrow-down" size={32} color={color} />
         </>
       )}
-    </View>
+    </RNAnimated.View>
   );
 }
 
@@ -95,10 +120,171 @@ const arrowStyles = StyleSheet.create({
   },
 });
 
+/**
+ * Floating instruction card for action-gated steps.
+ * Rendered at the top or bottom of the screen, non-blocking.
+ */
+function ActionCard({
+  title,
+  message,
+  stepNumber,
+  totalSteps,
+  onSkip,
+  position,
+}: {
+  title: string;
+  message: string;
+  stepNumber: number;
+  totalSteps: number;
+  onSkip: () => void;
+  position: "top" | "bottom";
+}) {
+  const { theme } = useTheme();
+  const fadeIn = useRef(new RNAnimated.Value(0)).current;
+
+  useEffect(() => {
+    RNAnimated.timing(fadeIn, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeIn]);
+
+  return (
+    <RNAnimated.View
+      style={[
+        actionCardStyles.wrapper,
+        position === "top"
+          ? actionCardStyles.wrapperTop
+          : actionCardStyles.wrapperBottom,
+        { opacity: fadeIn },
+      ]}
+      pointerEvents="box-none"
+    >
+      <View
+        style={[
+          actionCardStyles.card,
+          {
+            backgroundColor: theme.backgroundDefault + "F0",
+            borderColor: theme.primary + "60",
+          },
+        ]}
+      >
+        <View style={actionCardStyles.header}>
+          <View style={[actionCardStyles.stepPill, { backgroundColor: theme.primary + "15" }]}>
+            <ThemedText
+              style={[
+                actionCardStyles.stepPillText,
+                { color: theme.primary, fontFamily: Fonts?.mono },
+              ]}
+            >
+              Step {stepNumber} of {totalSteps}
+            </ThemedText>
+          </View>
+          <Pressable onPress={onSkip} hitSlop={12}>
+            <Feather name="x" size={18} color={theme.textSecondary} />
+          </Pressable>
+        </View>
+        <ThemedText
+          style={[actionCardStyles.title, { color: theme.text, fontFamily: Fonts?.display }]}
+        >
+          {title}
+        </ThemedText>
+        <ThemedText
+          style={[actionCardStyles.message, { color: theme.textSecondary, fontFamily: Fonts?.sans }]}
+        >
+          {message}
+        </ThemedText>
+        <Pressable onPress={onSkip} style={actionCardStyles.skipButton}>
+          <ThemedText style={[actionCardStyles.skipText, { color: theme.textSecondary }]}>
+            Skip Tutorial
+          </ThemedText>
+        </Pressable>
+      </View>
+    </RNAnimated.View>
+  );
+}
+
+const actionCardStyles = StyleSheet.create({
+  wrapper: {
+    position: "absolute",
+    left: Spacing.lg,
+    right: Spacing.lg,
+    zIndex: 9999,
+    alignItems: "center",
+  },
+  wrapperTop: {
+    top: 100,
+  },
+  wrapperBottom: {
+    bottom: 120,
+  },
+  card: {
+    width: "100%",
+    maxWidth: 360,
+    paddingVertical: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1.5,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: Spacing.sm,
+  },
+  stepPill: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+  },
+  stepPillText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+  message: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  skipButton: {
+    marginTop: Spacing.sm,
+    alignSelf: "flex-end",
+  },
+  skipText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+});
+
 export function TourOverlay() {
   const { theme } = useTheme();
   const { isTourActive, currentStep, steps, currentStepData, nextStep, skipTour } =
     useTour();
+
+  // Auto-advance for steps with autoAdvanceMs
+  const autoAdvanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (autoAdvanceTimer.current) {
+      clearTimeout(autoAdvanceTimer.current);
+      autoAdvanceTimer.current = null;
+    }
+    if (currentStepData?.autoAdvanceMs && !currentStepData.actionRequired) {
+      autoAdvanceTimer.current = setTimeout(() => {
+        nextStep();
+      }, currentStepData.autoAdvanceMs);
+    }
+    return () => {
+      if (autoAdvanceTimer.current) {
+        clearTimeout(autoAdvanceTimer.current);
+      }
+    };
+  }, [currentStep, currentStepData, nextStep]);
 
   if (!isTourActive || !currentStepData) return null;
 
@@ -106,7 +292,38 @@ export function TourOverlay() {
   const stepNumber = currentStep + 1;
   const totalSteps = steps.length;
   const hasArrow = currentStepData.arrow && currentStepData.arrow !== "none";
+  const isActionGated = !!currentStepData.actionRequired;
 
+  // --- Action-gated step: semi-transparent overlay with pointerEvents="box-none" ---
+  if (isActionGated) {
+    return (
+      <View style={overlayStyles.passthrough} pointerEvents="box-none">
+        {/* Semi-transparent scrim — taps pass through */}
+        <View style={overlayStyles.scrim} pointerEvents="none" />
+
+        {/* Arrow pointer */}
+        {hasArrow && (
+          <ArrowPointer
+            direction={currentStepData.arrow!}
+            label={currentStepData.arrowLabel}
+            color={theme.secondary}
+          />
+        )}
+
+        {/* Floating instruction card */}
+        <ActionCard
+          title={currentStepData.title}
+          message={currentStepData.message}
+          stepNumber={stepNumber}
+          totalSteps={totalSteps}
+          onSkip={skipTour}
+          position={currentStepData.arrow === "top-right" ? "bottom" : "top"}
+        />
+      </View>
+    );
+  }
+
+  // --- Regular modal step ---
   return (
     <Modal
       visible={true}
@@ -127,7 +344,7 @@ export function TourOverlay() {
           />
         )}
 
-        {/* Tour card — always centered */}
+        {/* Tour card -- always centered */}
         <View style={styles.cardWrapper}>
           <View
             style={[
@@ -215,6 +432,17 @@ export function TourOverlay() {
     </Modal>
   );
 }
+
+const overlayStyles = StyleSheet.create({
+  passthrough: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 9998,
+  },
+  scrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+  },
+});
 
 const styles = StyleSheet.create({
   overlay: {

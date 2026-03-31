@@ -2,7 +2,7 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Feather } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
-import { Platform, StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, Text, View } from "react-native";
 import DiscoverScreen from "@/screens/DiscoverScreen";
 import MapScreen from "@/screens/MapScreen";
 import CollectionScreen from "@/screens/CollectionScreen";
@@ -22,12 +22,86 @@ export type MainTabParamList = {
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-function TabIcon({ name, color, focused }: { name: string; color: string; focused: boolean }) {
+/** Small red notification badge rendered over the tab icon. */
+function Badge({ text }: { text: string }) {
   return (
-    <View style={styles.tabIconContainer}>
-      <Feather name={name as any} size={22} color={color} />
+    <View style={styles.badge}>
+      <Text style={styles.badgeText}>{text}</Text>
+    </View>
+  );
+}
+
+function TabIcon({
+  name,
+  color,
+  focused,
+  primaryColor,
+  badge,
+}: {
+  name: string;
+  color: string;
+  focused: boolean;
+  primaryColor: string;
+  badge?: string;
+}) {
+  const iconContainerWeb =
+    Platform.OS === "web"
+      ? ({
+          transition: "transform 0.15s ease-out",
+          cursor: "pointer",
+        } as any)
+      : {};
+
+  const iconContainerHoverWeb =
+    Platform.OS === "web" && !focused
+      ? ({
+          // Applied via a wrapping element — RN web maps onMouseEnter/Leave
+          // but we can use CSS class-based approach or inline style.
+          // For inline: we rely on the opacity change + the CSS transition.
+        } as any)
+      : {};
+
+  return (
+    <View
+      style={[
+        styles.tabIconContainer,
+        iconContainerWeb,
+        { opacity: focused ? 1 : 0.5 },
+      ]}
+      // Web hover: scale up slightly via CSS custom property
+      {...(Platform.OS === "web"
+        ? {
+            onMouseEnter: (e: any) => {
+              e.currentTarget.style.transform = "scale(1.05)";
+            },
+            onMouseLeave: (e: any) => {
+              e.currentTarget.style.transform = "scale(1)";
+            },
+          }
+        : {})}
+    >
+      <View>
+        <Feather name={name as any} size={22} color={color} />
+        {badge != null && <Badge text={badge} />}
+      </View>
       {focused && (
-        <View style={[styles.activeIndicator, { backgroundColor: color }]} />
+        <View
+          style={[
+            styles.activeIndicator,
+            {
+              backgroundColor: primaryColor,
+              shadowColor: primaryColor,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.8,
+              shadowRadius: 6,
+            },
+            Platform.OS === "web"
+              ? ({
+                  boxShadow: `0 0 8px ${primaryColor}60`,
+                } as any)
+              : {},
+          ]}
+        />
       )}
     </View>
   );
@@ -85,7 +159,12 @@ export default function MainTabNavigator() {
         options={{
           title: "Discover",
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="crosshair" color={color} focused={focused} />
+            <TabIcon
+              name="crosshair"
+              color={color}
+              focused={focused}
+              primaryColor={theme.primary}
+            />
           ),
         }}
       />
@@ -95,7 +174,12 @@ export default function MainTabNavigator() {
         options={{
           title: "Map",
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="map" color={color} focused={focused} />
+            <TabIcon
+              name="map"
+              color={color}
+              focused={focused}
+              primaryColor={theme.primary}
+            />
           ),
         }}
       />
@@ -105,7 +189,12 @@ export default function MainTabNavigator() {
         options={{
           title: "Loot",
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="gift" color={color} focused={focused} />
+            <TabIcon
+              name="gift"
+              color={color}
+              focused={focused}
+              primaryColor={theme.primary}
+            />
           ),
         }}
       />
@@ -115,7 +204,12 @@ export default function MainTabNavigator() {
         options={{
           title: "Social",
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="award" color={color} focused={focused} />
+            <TabIcon
+              name="award"
+              color={color}
+              focused={focused}
+              primaryColor={theme.primary}
+            />
           ),
         }}
       />
@@ -125,7 +219,12 @@ export default function MainTabNavigator() {
         options={{
           title: "Profile",
           tabBarIcon: ({ color, focused }) => (
-            <TabIcon name="user" color={color} focused={focused} />
+            <TabIcon
+              name="user"
+              color={color}
+              focused={focused}
+              primaryColor={theme.primary}
+            />
           ),
         }}
       />
@@ -140,9 +239,28 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
   activeIndicator: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    marginTop: 4,
+    width: 24,
+    height: 3,
+    borderRadius: 1.5,
+    marginTop: 6,
+  },
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -8,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: "#EF4444",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 3,
+    zIndex: 10,
+  },
+  badgeText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "800",
+    textAlign: "center",
   },
 });

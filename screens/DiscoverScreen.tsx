@@ -49,7 +49,11 @@ import { calculateDistance, formatDistance } from "../services/geolocation";
 import { LocationService } from "../services/locationService";
 import { StorageService } from "../services/storageService";
 import { CategoryChip } from "../components/CategoryChip";
+import { LootBoxSheet } from "../components/LootBoxSheet";
+import { SectionHeader } from "../components/SectionHeader";
+import { SkeletonCardList } from "../components/SkeletonLoader";
 import { useTour } from "../contexts/GuidedTourContext";
+import { useToast } from "../contexts/ToastContext";
 import { UserLocation, LootBox, LocationCategory } from "../types";
 
 const CATEGORY_EMOJI: Record<string, string> = {
@@ -78,7 +82,7 @@ function NearbyCard({
         {
           backgroundColor: theme.backgroundDefault,
           borderColor: box.isActive ? theme.primary + "25" : theme.border,
-          transform: [{ scale: pressed ? 0.97 : 1 }],
+          transform: [{ scale: pressed ? 0.95 : 1 }],
           opacity: box.isActive ? 1 : 0.5,
           ...Platform.select({
             web: {
@@ -193,7 +197,8 @@ export default function DiscoverScreen({ navigation }: any) {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
-  const { tourCompleted } = useTour();
+  const { tourCompleted, isTourActive, currentStepData, completeAction } = useTour();
+  const toast = useToast();
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [nearbyLootBoxes, setNearbyLootBoxes] = useState<LootBox[]>([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -210,6 +215,7 @@ export default function DiscoverScreen({ navigation }: any) {
     claimResult: ClaimResult | null;
   }>({ visible: false, box: null, claimResult: null });
   const [dailyBonus, setDailyBonus] = useState<DailyBonusResult | null>(null);
+  const [selectedBox, setSelectedBox] = useState<{ box: LootBox; distance: number } | null>(null);
 
   // Scanning text shimmer
   const shimmer = useSharedValue(0);
@@ -223,6 +229,13 @@ export default function DiscoverScreen({ navigation }: any) {
   const shimmerStyle = useAnimatedStyle(() => ({
     opacity: 0.5 + shimmer.value * 0.5,
   }));
+
+  // Tour action: detect AR mode toggle
+  useEffect(() => {
+    if (isTourActive && viewMode === "camera" && currentStepData?.actionRequired === "tap-ar") {
+      completeAction("tap-ar");
+    }
+  }, [viewMode, isTourActive, currentStepData, completeAction]);
 
   // Listen for device compass heading (for AR camera mode)
   useEffect(() => {
@@ -323,7 +336,7 @@ export default function DiscoverScreen({ navigation }: any) {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     if (!box.isActive) {
-      Alert.alert("Recharging ⏳", `${box.businessName}'s loot box is recharging. Check back soon!`);
+      toast.info(`${box.businessName}'s loot box is recharging. Check back soon!`);
       return;
     }
     if (!userLocation) {
@@ -338,8 +351,9 @@ export default function DiscoverScreen({ navigation }: any) {
 
     const isDemo = DemoService.isDemoBox(box.id);
     const claimRadius = isDemo ? 0.5 : 0.1; // 500m for demo, 100m for real
+    const isTourClaim = isTourActive && currentStepData?.actionRequired === "claim-lootbox";
 
-    if (distance > claimRadius) {
+    if (distance > claimRadius && !isTourClaim) {
       Alert.alert(
         `${box.businessName}`,
         `🎁 ${box.coupon.value}\n📍 ${formatDistance(distance)} away\n\n${isDemo ? "Get within 500m to claim this demo drop!" : "Get closer to claim this loot box!"}`,
@@ -380,6 +394,9 @@ export default function DiscoverScreen({ navigation }: any) {
       if (claimResult.newBadges.length > 0) setTimeout(() => SoundService.badgeUnlock(), 600);
 
       setCelebration({ visible: true, box, claimResult });
+      if (isTourActive && currentStepData?.actionRequired === "claim-lootbox") {
+        completeAction("claim-lootbox");
+      }
       return;
     }
 
@@ -404,6 +421,9 @@ export default function DiscoverScreen({ navigation }: any) {
       if (claimResult.newBadges.length > 0) setTimeout(() => SoundService.badgeUnlock(), 600);
 
       setCelebration({ visible: true, box, claimResult });
+      if (isTourActive && currentStepData?.actionRequired === "claim-lootbox") {
+        completeAction("claim-lootbox");
+      }
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       SoundService.error();
@@ -522,7 +542,10 @@ export default function DiscoverScreen({ navigation }: any) {
               style={[styles.searchInput, { color: theme.text }]}
             />
             {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery("")}>
+              <Pressable onPress={() => {
+                Haptics.selectionAsync();
+                setSearchQuery("");
+              }}>
                 <Feather name="x" size={16} color={theme.textSecondary} />
               </Pressable>
             )}
@@ -541,7 +564,10 @@ export default function DiscoverScreen({ navigation }: any) {
               key={cat}
               category={cat}
               selected={selectedCategory === cat}
-              onPress={() => setSelectedCategory(selectedCategory === cat ? null : cat)}
+              onPress={() => {
+                Haptics.selectionAsync();
+                setSelectedCategory(selectedCategory === cat ? null : cat);
+              }}
             />
           ))}
         </ScrollView>
@@ -576,9 +602,7 @@ export default function DiscoverScreen({ navigation }: any) {
         {/* Nearby list */}
         {filteredLootBoxes.length > 0 && (
           <Animated.View entering={FadeInUp.duration(500).delay(300)} style={styles.listSection}>
-            <ThemedText type="h4" style={styles.listTitle}>
-              Nearby Loot
-            </ThemedText>
+            <SectionHeader title="Nearby Loot" icon="radio" count={filteredLootBoxes.length} />
             <View style={styles.cardList}>
               {filteredLootBoxes.map((box, i) => (
                 <Animated.View
@@ -595,11 +619,27 @@ export default function DiscoverScreen({ navigation }: any) {
                           })
                         : 0
                     }
-                    onPress={() => handleLootBoxTap(box)}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      const dist = userLocation
+                        ? calculateDistance(userLocation, {
+                            latitude: box.latitude,
+                            longitude: box.longitude,
+                          })
+                        : 0;
+                      setSelectedBox({ box, distance: dist });
+                    }}
                   />
                 </Animated.View>
               ))}
             </View>
+          </Animated.View>
+        )}
+
+        {/* Loading skeleton */}
+        {filteredLootBoxes.length === 0 && userLocation === null && (
+          <Animated.View entering={FadeInUp.duration(500).delay(300)} style={{ paddingVertical: Spacing.xl }}>
+            <SkeletonCardList />
           </Animated.View>
         )}
 
@@ -636,6 +676,20 @@ export default function DiscoverScreen({ navigation }: any) {
         xp={dailyBonus?.xp || 0}
         streak={dailyBonus?.currentStreak || 0}
         onClose={() => setDailyBonus(null)}
+      />
+
+      {/* Loot box detail sheet */}
+      <LootBoxSheet
+        visible={!!selectedBox}
+        box={selectedBox?.box || null}
+        distance={selectedBox?.distance || 0}
+        onClaim={() => {
+          if (selectedBox) {
+            handleLootBoxTap(selectedBox.box);
+          }
+          setSelectedBox(null);
+        }}
+        onClose={() => setSelectedBox(null)}
       />
 
       {/* Claim celebration modal */}

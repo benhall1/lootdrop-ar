@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet, Pressable, Image, Alert, Modal, Platform } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -118,6 +119,7 @@ function MenuItem({
 export default function ProfileScreen() {
   const { signOut } = useAuth();
   const { theme } = useTheme();
+  const navigation = useNavigation<any>();
   const [user, setUser] = useState<User | null>(null);
   const [showChatModal, setShowChatModal] = useState(false);
   const [showMerchantModal, setShowMerchantModal] = useState(false);
@@ -444,7 +446,12 @@ export default function ProfileScreen() {
               <Feather name="x" size={24} color={theme.text} />
             </Pressable>
           </View>
-          <SettingsScreen />
+          <SettingsScreen
+            onReplayTour={() => {
+              setShowSettingsModal(false);
+              setTimeout(() => navigation.navigate("Discover"), 300);
+            }}
+          />
         </View>
       </Modal>
     </ScreenScrollView>

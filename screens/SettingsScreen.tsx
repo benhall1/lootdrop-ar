@@ -77,7 +77,7 @@ function SettingRow({
   );
 }
 
-export default function SettingsScreen() {
+export default function SettingsScreen({ onReplayTour }: { onReplayTour?: () => void }) {
   const { theme } = useTheme();
   const toast = useToast();
   const { resetTour } = useTour();
@@ -163,7 +163,11 @@ export default function SettingsScreen() {
           <Pressable
             onPress={async () => {
               await resetTour();
-              toast.success("Tour restarted!");
+              if (onReplayTour) {
+                onReplayTour();
+              } else {
+                toast.success("Tour restarted!");
+              }
             }}
             style={[styles.actionRow, { borderColor: theme.border }]}
           >
