@@ -23,12 +23,7 @@
     "@react-navigation/native": "^7.1.8",
     "@react-navigation/native-stack": "^7.3.16",
     "@supabase/supabase-js": "^2.100.0",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.5",
     "axios": "^1.13.2",
-    "cors": "^2.8.5",
-    "drizzle-kit": "^0.31.7",
-    "drizzle-orm": "^0.44.7",
     "expo": "^54.0.23",
     "expo-apple-authentication": "^8.0.7",
     "expo-blur": "^15.0.7",
@@ -46,9 +41,7 @@
     "expo-symbols": "~1.0.7",
     "expo-system-ui": "~6.0.8",
     "expo-web-browser": "~15.0.9",
-    "express": "^5.1.0",
     "leaflet": "^1.9.4",
-    "postgres": "^3.4.7",
     "qrcode": "^1.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
@@ -62,9 +55,7 @@
     "react-native-screens": "~4.16.0",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.5.1",
-    "stripe": "^20.0.0",
-    "stripe-replit-sync": "^0.0.12",
-    "tsx": "^4.20.6"
+    "stripe": "^20.0.0"
   },
   "devDependencies": {
     "@types/leaflet": "^1.9.21",

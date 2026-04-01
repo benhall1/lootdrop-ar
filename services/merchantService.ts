@@ -181,21 +181,31 @@ export class MerchantService {
     }
 
     try {
-      let boxQuery = supabase
+      if (merchantId) {
+        const { data, error } = await supabase.rpc("merchant_stats", {
+          p_merchant_id: merchantId,
+        });
+
+        if (!error && data) {
+          return {
+            totalClaims: data.totalClaims || 0,
+            activeDrops: data.activeDrops || 0,
+            weeklyGrowth: data.weeklyGrowth || "0%",
+          };
+        }
+      }
+
+      // Fallback: direct query if no merchantId or RPC fails
+      const { data } = await supabase
         .from("loot_boxes")
         .select("id, claims_count, is_active");
 
-      if (merchantId) {
-        boxQuery = boxQuery.eq("merchant_id", merchantId);
-      }
-
-      const { data } = await boxQuery;
       if (!data?.length) return { totalClaims: 0, activeDrops: 0, weeklyGrowth: "—" };
 
       const totalClaims = data.reduce((sum, b) => sum + b.claims_count, 0);
       const activeDrops = data.filter((b) => b.is_active).length;
 
-      return { totalClaims, activeDrops, weeklyGrowth: "+23%" };
+      return { totalClaims, activeDrops, weeklyGrowth: "—" };
     } catch {
       return { totalClaims: 0, activeDrops: 0, weeklyGrowth: "—" };
     }

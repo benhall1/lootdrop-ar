@@ -413,7 +413,10 @@ export default function DiscoverScreen({ navigation }: any) {
         await StorageService.addCollectedCoupon(result.coupon);
       }
 
-      const claimResult = await GamificationService.recordClaim(box.businessName);
+      // Use server gamification result if available, otherwise fall back to local
+      const claimResult = result.gamification
+        ? await GamificationService.processServerClaimResult(result.gamification)
+        : await GamificationService.recordClaim(box.businessName);
       setGamification(await GamificationService.getState());
 
       SoundService.claimSuccess();

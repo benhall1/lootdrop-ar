@@ -129,44 +129,33 @@ export class SocialService {
     if (!isSupabaseConfigured) return MOCK_ACTIVITY;
 
     try {
-      // Fetch recent claims with user and loot box info
-      const { data: claims, error } = await supabase
-        .from("claims")
-        .select("id, created_at, user_id, loot_box_id")
+      // Fetch recent activity events with user names
+      const { data: events, error } = await supabase
+        .from("activity_events")
+        .select("id, event_type, message, emoji, created_at, user_id")
         .order("created_at", { ascending: false })
-        .limit(15);
+        .limit(20);
 
-      if (error || !claims?.length) return MOCK_ACTIVITY;
+      if (error || !events?.length) return MOCK_ACTIVITY;
 
-      // Fetch related users and loot boxes
-      const userIds = [...new Set(claims.map((c) => c.user_id))];
-      const boxIds = [...new Set(claims.map((c) => c.loot_box_id))];
-
-      const [usersRes, boxesRes] = await Promise.all([
-        supabase.from("users").select("id, name").in("id", userIds),
-        supabase.from("loot_boxes").select("id, business_name, category").in("id", boxIds),
-      ]);
+      // Fetch user names
+      const userIds = [...new Set(events.map((e) => e.user_id))];
+      const { data: users } = await supabase
+        .from("users")
+        .select("id, name")
+        .in("id", userIds);
 
       const userMap: Record<string, string> = {};
-      usersRes.data?.forEach((u) => { userMap[u.id] = u.name || "Anonymous"; });
+      users?.forEach((u) => { userMap[u.id] = u.name || "Anonymous"; });
 
-      const boxMap: Record<string, { business_name: string; category: string }> = {};
-      boxesRes.data?.forEach((b) => { boxMap[b.id] = b; });
-
-      return claims.map((c) => {
-        const box = boxMap[c.loot_box_id];
-        const userName = userMap[c.user_id] || "Someone";
-        const emoji = box ? (CATEGORY_EMOJI[box.category] || "📦") : "📦";
-
-        return {
-          id: c.id,
-          type: "claim" as const,
-          user: userName,
-          message: `claimed a loot box at ${box?.business_name || "a local business"}`,
-          emoji,
-          timeAgo: formatTimeAgo(c.created_at),
-        };
-      });
+      return events.map((e) => ({
+        id: e.id,
+        type: e.event_type as ActivityItem["type"],
+        user: userMap[e.user_id] || "Someone",
+        message: e.message,
+        emoji: e.emoji,
+        timeAgo: formatTimeAgo(e.created_at),
+      }));
     } catch {
       return MOCK_ACTIVITY;
     }

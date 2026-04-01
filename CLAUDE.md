@@ -4,7 +4,7 @@
 
 A cross-platform Expo/React Native app that gamifies local commerce. Virtual "loot boxes" are placed at real-world business locations. Users discover them via an interactive radar/map, claim real coupons, and drive foot traffic to local merchants.
 
-**Current state:** ~65% complete prototype built by Replit AI. Functional but has bugs, dead code, and is locked to Replit infrastructure.
+**Current state:** Fully functional PWA with Supabase backend, server-side gamification, activity feed, Stripe via Edge Functions, and scheduled jobs. Decoupled from Replit.
 
 ## Product Decision: Web-First PWA
 
@@ -14,35 +14,39 @@ We decided to ship as a **Progressive Web App** (not native iOS/Android) for v1.
 
 ```
 PWA (Expo Web)
-├── Radar View (animated discovery — replaces fake AR camera)
-├── Leaflet/Mapbox (real map — replaces custom canvas SimpleMapView)
-├── Merchant Dashboard (create drops, view stats)
-├── Social (leaderboards, share-a-deal)
-├── Gamification (streaks, XP, badges)
-└── Sound + Haptics
+├── Radar View (animated discovery)
+├── Leaflet Map (CartoDB dark tiles, marker clustering)
+├── Merchant Dashboard (create drops, view real stats)
+├── Social (leaderboards, activity feed from activity_events)
+├── Gamification (server-side XP, badges, streaks, levels, tiers)
+├── Sound + Haptics
+└── PWA (manifest, service worker, install prompt, offline fallback)
         │
-        │ Supabase Client (REST + Realtime)
+        │ Supabase Client (REST + Realtime + functions.invoke)
         ▼
-Supabase (Auth + PostgreSQL + Realtime + Storage + Edge Functions)
-        │
-        ▼
-Fly.io (Express API)
-├── Stripe webhooks
-├── Push notification dispatch (Web Push + email)
-├── Merchant analytics engine
-└── Social feed aggregation
+Supabase (Auth + PostgreSQL/PostGIS + Realtime + Edge Functions)
+├── Edge Function: send-push (VAPID Web Push dispatch)
+├── Edge Function: stripe-checkout (Checkout sessions + product listing)
+├── Edge Function: stripe-webhook (subscription lifecycle)
+├── RPC: claim_loot_box (validation + gamification + activity logging + rate limiting)
+├── RPC: get_gamification_state (hydrate client on app open)
+├── RPC: record_redemption (XP + badges for coupon use)
+├── RPC: merchant_stats (real weekly growth metrics)
+├── pg_cron: streak reset, expired box cleanup, push sub cleanup, rate limit cleanup
+└── PostGIS: spatial queries, distance validation
 ```
 
 ## Key Tech Decisions (Locked In)
 
-- **Backend:** Supabase (DB/Auth/Realtime) + Fly.io (Express API). Decoupled from Replit.
-- **Auth:** Supabase Auth (Apple + Google + Email). Current `authService.ts` becomes a thin wrapper.
-- **Discovery:** Radar View (animated top-down radar) instead of AR camera. Works on all browsers.
-- **Map:** Leaflet or Mapbox (web). Not react-native-maps.
-- **Notifications:** Web Push where supported + email fallback. NOT native push.
-- **Payments:** Stripe (keep existing integration, decouple from Replit connectors).
-- **Distribution:** Vercel or Netlify for PWA static hosting. GitHub Actions CI.
-- **Security:** Server-side distance validation (100m) on all loot box claims.
+- **Backend:** Supabase only (DB/Auth/Realtime/Edge Functions). No separate server. Fully decoupled from Replit.
+- **Auth:** Supabase Auth (Apple + Google + Email). `authService.ts` is a thin wrapper.
+- **Discovery:** Radar View (animated top-down radar). Works on all browsers.
+- **Map:** Leaflet with react-leaflet v5, CartoDB dark tiles, marker clustering via leaflet.markercluster.
+- **Notifications:** Web Push via VAPID (Edge Function `send-push`). Service worker handles push events.
+- **Payments:** Stripe via Supabase Edge Functions (`stripe-checkout`, `stripe-webhook`). No Express server.
+- **Gamification:** Server-authoritative. XP, badges, streaks, levels calculated in `claim_loot_box` RPC. AsyncStorage is read cache only.
+- **Distribution:** Vercel for PWA static hosting. GitHub Actions CI.
+- **Security:** Server-side distance validation (100m), rate limiting (5 claims/min), RLS on all tables.
 
 ## v1 Scope (10 Deliverables)
 
@@ -82,37 +86,53 @@ Fly.io (Express API)
 | 9 | claimService.ts | DONE |
 | 10 | Leaflet map | DONE |
 | 11 | Screens wired to Supabase (with mock fallback) | DONE |
-| 12 | Stripe Edge Functions | TODO |
+| 12 | Stripe Edge Functions | DONE (stripe-checkout + stripe-webhook) |
 | 13 | Jest tests | DONE (services + geolocation) |
 | 14 | Deployed to Vercel | DONE |
 
-### Wave 2: Features — DONE (frontend complete, uses mock data)
+### Wave 2: Features — DONE
 
 | # | Task | Status |
 |---|------|--------|
 | 1 | Radar View | DONE |
-| 2 | Merchant self-serve | DONE (UI, needs Supabase) |
-| 3 | Web Push notifications | DONE (client-side, needs server dispatch) |
-| 4 | Social (leaderboard, activity, badges) | DONE (UI, mock data) |
+| 2 | Merchant self-serve | DONE (UI + real stats via merchant_stats RPC) |
+| 3 | Web Push notifications | DONE (SW + subscribe + send-push Edge Function) |
+| 4 | Social (leaderboard, activity, badges) | DONE (activity_events table + real feed) |
 | 5 | Sound design + haptics | DONE |
-| 6 | Gamification (XP, streaks, tiers) | DONE |
+| 6 | Gamification (XP, streaks, tiers) | DONE (server-authoritative via claim_loot_box RPC) |
+
+### Wave 3: Backend Hardening — DONE
+
+| # | Task | Status |
+|---|------|--------|
+| 1 | Gamification sync to database | DONE (migration 006) |
+| 2 | Activity events + merchant stats | DONE (migration 007) |
+| 3 | Scheduled jobs (pg_cron) | DONE (migration 008) |
+| 4 | Stripe migration to Edge Functions | DONE (migration 009, server/ deleted) |
+| 5 | Rate limiting | DONE (migration 010) |
+| 6 | PWA (manifest, SW caching, install prompt) | DONE |
+| 7 | Map clustering (leaflet.markercluster) | DONE |
 
 ### Remaining Work
 
-- **Create Supabase project** — DONE (migrations + seed data deployed)
 - **Add Vercel env vars** — EXPO_PUBLIC_SUPABASE_URL + EXPO_PUBLIC_SUPABASE_ANON_KEY
-- **Stripe Edge Functions** — webhook handler + checkout session creation
-- **Web Push notifications** — DONE (SW + subscribe/unsubscribe + Supabase storage). Server-side dispatch via Fly.io is TODO.
-- **Wire leaderboard/social** to real Supabase data — DONE (socialService.ts)
-- **Wire merchant self-serve** to real Supabase data — DONE (merchantService.ts)
+- **Run migrations 006-010** on Supabase project
+- **Enable pg_cron** via Supabase Dashboard > Database > Extensions
+- **Deploy Edge Functions** — `supabase functions deploy stripe-checkout stripe-webhook`
+- **Set Stripe secrets** — `supabase secrets set STRIPE_SECRET_KEY=... STRIPE_WEBHOOK_SECRET=...`
+- **Register Stripe webhook** — point to `https://<project>.supabase.co/functions/v1/stripe-webhook`
 
 ## Database Schema (Supabase PostgreSQL + PostGIS)
 
-Tables: users, loot_boxes (with GEOGRAPHY point + spatial index), claims (UNIQUE user+box), favorites.
+Tables: users, loot_boxes (GEOGRAPHY + GIST index), claims (UNIQUE user+box), favorites, push_subscriptions, user_badges, activity_events, rate_limits.
 Key decisions:
-- Claims validated server-side via Supabase Edge Function (not Express)
+- Claims validated server-side via `claim_loot_box` RPC (not Edge Function)
 - Distance check: ST_Distance < 100m
 - Idempotency: UNIQUE(user_id, loot_box_id) prevents double-claims
+- Rate limiting: 5 claims/minute per user via `rate_limits` table
+- Gamification calculated atomically in claim RPC (XP, badges, streaks, level, tier)
+- Activity events logged in same transaction as claims
+- pg_cron: streak reset (daily), box expiry (hourly), push cleanup (weekly), rate limit cleanup (10min)
 
 ## Known Bugs — ALL FIXED
 

@@ -238,7 +238,12 @@ export default function MapScreen({ navigation }: any) {
         if (result.coupon) {
           await StorageService.addCollectedCoupon(result.coupon);
         }
-        await GamificationService.recordClaim(box.businessName);
+        // Use server gamification result if available, otherwise fall back to local
+        if (result.gamification) {
+          await GamificationService.processServerClaimResult(result.gamification);
+        } else {
+          await GamificationService.recordClaim(box.businessName);
+        }
         SoundService.claimSuccess();
         Alert.alert(
           "Loot Claimed!",

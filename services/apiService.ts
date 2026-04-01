@@ -1,86 +1,96 @@
-import * as WebBrowser from 'expo-web-browser';
-
-const API_BASE_URL = __DEV__
-  ? `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`
-  : `https://${process.env.REPLIT_DOMAINS?.split(',')[0]}`;
+import * as WebBrowser from "expo-web-browser";
+import { supabase, isSupabaseConfigured } from "./supabaseClient";
 
 export class ApiService {
-  static async createGuestUser(email: string, name: string) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/guest`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create user');
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Create user error:', error);
-      throw error;
-    }
-  }
-
+  /**
+   * Get user's subscription status from the users table.
+   */
   static async getSubscription(userId: string) {
+    if (!isSupabaseConfigured) return null;
+
     try {
-      const response = await fetch(`${API_BASE_URL}/api/subscription/${userId}`);
+      const { data, error } = await supabase
+        .from("users")
+        .select("is_premium, subscription_status, stripe_subscription_id")
+        .eq("id", userId)
+        .single();
 
-      if (!response.ok) {
-        throw new Error('Failed to get subscription');
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Get subscription error:', error);
-      throw error;
-    }
-  }
-
-  static async getProductsWithPrices() {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/products-with-prices`);
-
-      if (!response.ok) {
-        throw new Error('Failed to get products');
-      }
-
-      const data = await response.json();
-      return data.data || [];
-    } catch (error) {
-      console.error('Get products error:', error);
-      throw error;
-    }
-  }
-
-  static async createCheckoutSession(userId: string, priceId: string, email: string, name: string) {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/checkout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, priceId, email, name }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create checkout session');
-      }
-
-      const data = await response.json();
+      if (error) throw error;
       return data;
     } catch (error) {
-      console.error('Checkout error:', error);
+      console.error("Get subscription error:", error);
       throw error;
     }
   }
 
+  /**
+   * List active products with prices from Stripe via Edge Function.
+   */
+  static async getProductsWithPrices() {
+    if (!isSupabaseConfigured) return [];
+
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "stripe-checkout",
+        {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      if (error) throw error;
+      return data?.data || [];
+    } catch (error) {
+      console.error("Get products error:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a Stripe Checkout session via Edge Function.
+   */
+  static async createCheckoutSession(
+    userId: string,
+    priceId: string,
+    email: string,
+    name: string
+  ) {
+    if (!isSupabaseConfigured) {
+      throw new Error("Supabase not configured");
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "stripe-checkout",
+        {
+          body: {
+            userId,
+            priceId,
+            email,
+            name,
+            successUrl: `${typeof window !== "undefined" ? window.location.origin : ""}/`,
+            cancelUrl: `${typeof window !== "undefined" ? window.location.origin : ""}/`,
+          },
+        }
+      );
+
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error("Checkout error:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Open a checkout URL in the browser.
+   */
   static async openCheckout(checkoutUrl: string) {
     try {
       const result = await WebBrowser.openBrowserAsync(checkoutUrl);
       return result;
     } catch (error) {
-      console.error('Open checkout error:', error);
+      console.error("Open checkout error:", error);
       throw error;
     }
   }

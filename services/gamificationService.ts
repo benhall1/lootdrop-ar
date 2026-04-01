@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { supabase, isSupabaseConfigured } from "./supabaseClient";
 
 const STORAGE_KEY = "@lootdrop_gamification";
 
@@ -111,7 +112,45 @@ export interface ClaimResult {
 }
 
 export class GamificationService {
+  /**
+   * Get current gamification state.
+   * If Supabase is configured, fetches from DB and caches locally.
+   * Otherwise reads from AsyncStorage (demo mode).
+   */
   static async getState(): Promise<GamificationState> {
+    if (isSupabaseConfigured) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          const { data, error } = await supabase.rpc("get_gamification_state", {
+            p_user_id: session.user.id,
+          });
+
+          if (!error && data && !data.error) {
+            const dbBadges: Array<{ id: string; name: string; emoji: string; unlockedAt: string }> = data.badges || [];
+            const state: GamificationState = {
+              xp: data.xp || 0,
+              level: data.level || 1,
+              streak: data.streak || 0,
+              longestStreak: data.longestStreak || 0,
+              totalClaims: data.totalClaims || 0,
+              totalRedemptions: data.totalRedemptions || 0,
+              lastClaimDate: data.lastClaimDate || null,
+              tier: data.tier || "bronze",
+              badges: ALL_BADGES.map((b) => {
+                const unlocked = dbBadges.find((db) => db.id === b.id);
+                return { ...b, unlockedAt: unlocked?.unlockedAt || null };
+              }),
+            };
+            // Cache locally
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            return state;
+          }
+        }
+      } catch {}
+    }
+
+    // Fallback to local cache / demo mode
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       if (raw) return JSON.parse(raw);
@@ -124,11 +163,51 @@ export class GamificationService {
   }
 
   /**
-   * Call when user claims a loot box.
-   * Updates XP, streak, badges, level, tier.
+   * Process gamification result from the claim_loot_box RPC response.
+   * When Supabase is configured, the RPC does all the math server-side.
+   * This method parses the response and updates the local cache.
+   */
+  static async processServerClaimResult(gamification: any): Promise<ClaimResult> {
+    const xpEvents: XPEvent[] = (gamification.xp_events || []).map((e: any) => ({
+      type: e.type,
+      amount: e.amount,
+      message: e.message,
+    }));
+
+    const newBadges: Badge[] = (gamification.new_badges || []).map((b: any) => {
+      const template = ALL_BADGES.find((ab) => ab.id === b.id);
+      return {
+        id: b.id,
+        name: b.name,
+        description: template?.description || "",
+        emoji: b.emoji,
+        unlockedAt: new Date().toISOString(),
+      };
+    });
+
+    const result: ClaimResult = {
+      xpEvents,
+      newBadges,
+      leveledUp: gamification.leveled_up || false,
+      previousLevel: gamification.previous_level || 1,
+      newLevel: gamification.new_level || 1,
+      tierChanged: gamification.tier_changed || false,
+      newTier: gamification.new_tier || "bronze",
+      streak: gamification.streak || 0,
+    };
+
+    // Refresh local cache from server
+    await this.getState();
+
+    return result;
+  }
+
+  /**
+   * Call when user claims a loot box (demo/offline mode only).
+   * When Supabase is configured, use processServerClaimResult() instead.
    */
   static async recordClaim(businessId?: string): Promise<ClaimResult> {
-    const state = await this.getState();
+    const state = await this.getLocalState();
     const xpEvents: XPEvent[] = [];
     const newBadges: Badge[] = [];
     const previousLevel = state.level;
@@ -212,10 +291,11 @@ export class GamificationService {
   }
 
   /**
-   * Call when user redeems a coupon at a business.
+   * Call when user redeems a coupon at a business (demo/offline mode only).
+   * When Supabase is configured, use record_redemption RPC directly.
    */
   static async recordRedemption(): Promise<ClaimResult> {
-    const state = await this.getState();
+    const state = await this.getLocalState();
     const xpEvents: XPEvent[] = [];
     const newBadges: Badge[] = [];
     const previousLevel = state.level;
@@ -289,13 +369,13 @@ export class GamificationService {
     try {
       const lastBonus = await AsyncStorage.getItem(DAILY_BONUS_KEY);
       if (lastBonus === today) {
-        const state = await this.getState();
+        const state = await this.getLocalState();
         return { awarded: false, xp: 0, currentStreak: state.streak };
       }
     } catch {}
 
     // Award the bonus
-    const state = await this.getState();
+    const state = await this.getLocalState();
     state.xp += XP_DAILY_BONUS;
     state.level = calculateLevel(state.xp);
     state.tier = calculateTier(state.level);
@@ -310,5 +390,14 @@ export class GamificationService {
    */
   static async reset(): Promise<void> {
     await AsyncStorage.removeItem(STORAGE_KEY);
+  }
+
+  /** Read from AsyncStorage only (used by demo/offline paths and daily bonus) */
+  private static async getLocalState(): Promise<GamificationState> {
+    try {
+      const raw = await AsyncStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    return getDefaultState();
   }
 }

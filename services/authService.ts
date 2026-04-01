@@ -231,7 +231,7 @@ export class AuthService {
     try {
       const { data } = await supabase
         .from("users")
-        .select("role, business_name, business_category, business_lat, business_lng, avatar_tier")
+        .select("role, business_name, business_category, business_lat, business_lng, avatar_tier, xp, level, streak_count, total_claims, is_premium")
         .eq("id", supaUser.id)
         .single();
 

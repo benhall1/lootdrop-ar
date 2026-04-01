@@ -1,11 +1,25 @@
 import { supabase } from "./supabaseClient";
 import { CollectedCoupon } from "../types";
 
+export interface GamificationResult {
+  xp_earned: number;
+  total_xp: number;
+  xp_events: Array<{ type: string; amount: number; message: string }>;
+  new_badges: Array<{ id: string; name: string; emoji: string }>;
+  leveled_up: boolean;
+  previous_level: number;
+  new_level: number;
+  tier_changed: boolean;
+  new_tier: "bronze" | "silver" | "gold";
+  streak: number;
+}
+
 export interface ClaimResult {
   success: boolean;
   coupon?: CollectedCoupon;
-  error?: "not_found" | "expired" | "already_claimed" | "too_far" | "max_claims" | "unknown";
+  error?: "not_found" | "expired" | "already_claimed" | "too_far" | "max_claims" | "rate_limited" | "unknown";
   message?: string;
+  gamification?: GamificationResult;
 }
 
 /**
@@ -73,6 +87,7 @@ export class ClaimService {
       return {
         success: true,
         coupon: data.coupon,
+        gamification: data.gamification || undefined,
       };
     } catch (error: any) {
       console.error("Claim error:", error);
