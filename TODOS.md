@@ -1,20 +1,10 @@
 # TODOS
 
-## Pre-Launch: Seed Script for Test Data
-- **What:** Create a seed script that populates Supabase with test loot boxes in a configurable location
-- **Why:** After Wave 1 deploys, the DB is empty. Need test data to demo and QA.
-- **Effort:** S (human ~2 hours) → CC: S (~10 min)
-- **Priority:** P1 — needed before any testing or demos
-- **Depends on:** Supabase schema (Wave 1)
-- **Context:** Adapt the existing `mockData.ts` (6 SF loot boxes) into a Supabase INSERT script. Add a location parameter so you can seed any city.
+## Pre-Launch: Seed Script for Test Data — DONE
+- Implemented in `supabase/seed.sql` — 8 merchants, 9 consumers, 10 loot boxes, demo claims. All SF locations.
 
-## Pre-Launch: Supabase Row Level Security (RLS)
-- **What:** Write RLS policies so users can only access their own data, merchants manage their own boxes, everyone reads active boxes
-- **Why:** Without RLS, any authenticated user can read/write any row. Security baseline.
-- **Effort:** S (human ~3 hours) → CC: S (~15 min)
-- **Priority:** P1 — security requirement before any real users
-- **Depends on:** Supabase schema (Wave 1)
-- **Context:** Policies needed: users can SELECT/UPDATE own profile, SELECT active loot_boxes, INSERT/SELECT own claims and favorites. Merchants can INSERT/UPDATE/DELETE own loot_boxes.
+## Pre-Launch: Supabase Row Level Security (RLS) — DONE
+- Implemented across migrations 003, 004, 006, 007. All tables covered with appropriate policies.
 
 ## Phase 2: Native iOS/Android App
 - **What:** Build native app with EAS Build, real ARKit/ARCore world-anchored AR, native push notifications
