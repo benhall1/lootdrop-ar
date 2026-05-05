@@ -31,82 +31,100 @@ if (typeof document !== "undefined" && !document.getElementById(LEAFLET_CSS_ID))
   const style = document.createElement("style");
   style.textContent = `
     .lootbox-marker { transition: transform 0.2s ease; cursor: pointer; }
-    .lootbox-marker:hover { transform: scale(1.15) !important; z-index: 1000 !important; }
-    .user-marker { animation: lootdrop-pulse 2s ease-in-out infinite; }
+    .lootbox-marker:hover { transform: scale(1.1) !important; z-index: 1000 !important; }
+    .lda-pin-halo {
+      animation: lda-pulse-glow 2s ease-in-out infinite;
+    }
+    @keyframes lda-pulse-glow {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.15); }
+    }
+    .user-marker {
+      animation: lootdrop-pulse 2s ease-in-out infinite;
+    }
     .marker-cluster {
-      background: rgba(255, 87, 34, 0.3);
+      background: rgba(0, 229, 255, 0.2);
+      border: 1.5px solid rgba(0, 229, 255, 0.5);
       border-radius: 50%;
+      box-shadow: 0 0 16px rgba(0, 229, 255, 0.35);
     }
     .marker-cluster div {
-      background: #FF5722;
-      color: white;
+      background: linear-gradient(180deg, #00E5FF, #00B8D4);
+      color: #07091A;
       border-radius: 50%;
-      font-weight: 800;
+      font-weight: 900;
       font-size: 14px;
       font-family: 'Nunito', sans-serif;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 2px 0 #006978;
     }
     .leaflet-popup-content-wrapper {
       border-radius: 14px !important;
-      background: #1A1A2E !important;
-      box-shadow: 0 4px 24px rgba(255, 87, 34, 0.2), 0 0 40px rgba(255, 87, 34, 0.05) !important;
+      background: rgba(15, 19, 38, 0.95) !important;
+      backdrop-filter: blur(10px);
+      border: 1.5px solid rgba(0, 229, 255, 0.3);
+      box-shadow: 0 4px 24px rgba(0,0,0,0.6), 0 0 32px rgba(0, 229, 255, 0.2) !important;
       font-family: 'Nunito', system-ui, sans-serif !important;
     }
-    .leaflet-popup-tip { background: #1A1A2E !important; }
+    .leaflet-popup-tip { background: rgba(15, 19, 38, 0.95) !important; }
     .leaflet-popup-content {
       margin: 12px 16px !important;
       font-size: 13px !important;
-      color: #B0B0C0 !important;
+      color: #8E96C8 !important;
       line-height: 1.5 !important;
     }
     .leaflet-popup-content .popup-name {
-      font-weight: 800;
+      font-weight: 900;
       color: #FFFFFF;
       font-size: 15px;
       margin-bottom: 4px;
+      letter-spacing: 0.3px;
     }
     .leaflet-popup-content .popup-value {
-      color: #FF5722;
-      font-weight: 800;
+      color: #FFD54F;
+      font-weight: 900;
       font-size: 18px;
+      text-shadow: 0 0 12px rgba(255,213,79,0.4);
     }
     .leaflet-popup-content .popup-scheduled {
       color: #64748B;
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 700;
     }
     .leaflet-popup-content .popup-category {
       display: inline-block;
-      background: rgba(255,87,34,0.12);
-      color: #FF8A65;
-      font-size: 11px;
-      font-weight: 700;
+      background: rgba(0,229,255,0.12);
+      color: #00E5FF;
+      font-size: 10px;
+      font-weight: 900;
       padding: 2px 8px;
       border-radius: 6px;
       margin-top: 4px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
     }
     .leaflet-popup-close-button { color: #64748B !important; }
-    .leaflet-popup-close-button:hover { color: #FF5722 !important; }
+    .leaflet-popup-close-button:hover { color: #00E5FF !important; }
     .recenter-btn {
       position: absolute; bottom: 24px; right: 16px; z-index: 1000;
-      width: 44px; height: 44px; border-radius: 50%;
-      background: #1A1A2E; border: 2px solid rgba(255,87,34,0.3);
-      color: #FF5722; font-size: 20px;
+      width: 48px; height: 48px; border-radius: 50%;
+      background: linear-gradient(180deg, #00E5FF, #00B8D4);
+      border: 2px solid rgba(255,255,255,0.4);
+      color: #07091A; font-size: 20px; font-weight: 900;
       display: flex; align-items: center; justify-content: center;
-      cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-      transition: all 0.2s ease;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #006978, 0 0 24px rgba(0,229,255,0.5);
+      transition: transform 0.2s ease;
     }
-    .recenter-btn:hover {
-      background: #FF5722; color: white;
-      box-shadow: 0 0 20px rgba(255,87,34,0.4);
-    }
+    .recenter-btn:hover { transform: translateY(-2px); }
     .leaflet-control-zoom a {
-      background: #1A1A2E !important;
-      color: #B0B0C0 !important;
-      border-color: rgba(255,87,34,0.2) !important;
+      background: rgba(15, 19, 38, 0.9) !important;
+      color: #8E96C8 !important;
+      border-color: rgba(0, 229, 255, 0.2) !important;
+      backdrop-filter: blur(10px);
     }
     .leaflet-control-zoom a:hover {
-      background: #252940 !important;
-      color: #FF5722 !important;
+      background: rgba(0, 229, 255, 0.15) !important;
+      color: #00E5FF !important;
     }
   `;
   document.head.appendChild(style);
@@ -122,21 +140,19 @@ L.Icon.Default.mergeOptions({
 
 const userIcon = L.divIcon({
   className: "user-marker",
-  html: `<div style="
-    width: 24px; height: 24px; border-radius: 50%;
-    background: #FF5722; border: 3px solid white;
-    box-shadow: 0 0 16px rgba(255, 87, 34, 0.6), 0 2px 8px rgba(0,0,0,0.3);
-  "></div>`,
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
+  html: `<div style="position:relative;width:36px;height:36px;">
+    <div style="position:absolute;inset:-12px;border-radius:50%;
+      background:radial-gradient(circle,rgba(0,229,255,0.4),transparent 70%);
+      animation:lda-pulse-glow 2s ease-in-out infinite;"></div>
+    <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+      width:18px;height:18px;border-radius:50%;
+      background:linear-gradient(180deg,#00E5FF,#00B8D4);
+      border:3px solid #fff;
+      box-shadow:0 0 16px rgba(0,229,255,0.7),0 2px 8px rgba(0,0,0,0.4);"></div>
+  </div>`,
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
 });
-
-const CATEGORY_EMOJI: Record<string, string> = {
-  restaurant: "🍕",
-  retail: "🛍",
-  entertainment: "🎮",
-  services: "⚡",
-};
 
 const CATEGORY_LABEL: Record<string, string> = {
   restaurant: "Restaurant",
@@ -145,36 +161,92 @@ const CATEGORY_LABEL: Record<string, string> = {
   services: "Services",
 };
 
-function lootBoxIcon(isActive: boolean, category?: string) {
-  const emoji = CATEGORY_EMOJI[category || ""] || "📦";
+type Rarity = "gold" | "silver" | "bronze" | "epic";
 
-  if (!isActive) {
+const RARITY_COLORS: Record<Rarity, { c: string; d: string; g: string; chest: string }> = {
+  gold: { c: "#FFD54F", d: "#B8860B", g: "rgba(255,213,79,0.6)", chest: "#5A3F00" },
+  silver: { c: "#C0CAE0", d: "#5A6378", g: "rgba(192,202,224,0.5)", chest: "#2D3540" },
+  bronze: { c: "#E89B5E", d: "#6B3D14", g: "rgba(232,155,94,0.5)", chest: "#3D2208" },
+  epic: { c: "#C77DFF", d: "#5A189A", g: "rgba(199,125,255,0.6)", chest: "#240046" },
+};
+
+const CATEGORY_RARITY: Record<string, Rarity> = {
+  restaurant: "gold",
+  entertainment: "epic",
+  retail: "silver",
+  services: "bronze",
+};
+
+function formatRemaining(dropTime: number): string {
+  const diff = dropTime - Date.now();
+  if (diff <= 0) return "";
+  const hours = Math.floor(diff / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  if (hours >= 24) return `${Math.floor(hours / 24)}d`;
+  if (hours > 0) return `${hours}h ${mins}m`;
+  return `${mins}m`;
+}
+
+function lootBoxIcon(box: LootBox) {
+  if (!box.isActive) {
+    const timer = formatRemaining(box.dropTime);
     return L.divIcon({
       className: "lootbox-marker",
-      html: `<div style="
-        width: 36px; height: 36px; border-radius: 12px;
-        background: #252940; border: 2px solid #64748B;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 16px; opacity: 0.6;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      ">⏳</div>`,
+      html: `<div style="position:relative;width:36px;height:36px;opacity:0.55;">
+        <div style="
+          position:relative;width:36px;height:36px;
+          background:linear-gradient(180deg,#3a4366,#1f2548);
+          border-radius:18px 18px 18px 4px;
+          transform:rotate(-45deg);
+          border:2px solid rgba(255,255,255,0.2);
+          box-shadow:0 3px 0 rgba(0,0,0,0.4);
+          display:flex;align-items:center;justify-content:center;">
+          <div style="transform:rotate(45deg);font-size:14px;">⏳</div>
+        </div>
+        ${timer ? `<div style="position:absolute;top:-8px;right:-14px;
+          padding:1px 6px;background:linear-gradient(180deg,#64748B,#475569);
+          color:#fff;border-radius:999px;font-family:'JetBrains Mono',monospace;
+          font-size:9px;font-weight:700;border:1.5px solid #fff;
+          box-shadow:0 2px 0 rgba(0,0,0,0.4);">${timer}</div>` : ""}
+      </div>`,
       iconSize: [36, 36],
-      iconAnchor: [18, 18],
+      iconAnchor: [18, 36],
     });
   }
 
+  const rarity = CATEGORY_RARITY[box.category || ""] || "gold";
+  const col = RARITY_COLORS[rarity];
+  const size = 44;
+  const chestColor = col.chest;
+  const chestSize = Math.round(size * 0.55);
+
   return L.divIcon({
     className: "lootbox-marker",
-    html: `<div style="
-      width: 42px; height: 42px; border-radius: 14px;
-      background: linear-gradient(135deg, #FF6D3A, #FF5722);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 22px;
-      box-shadow: 0 0 20px rgba(255, 109, 58, 0.45), 0 4px 10px rgba(0,0,0,0.25);
-      border: 2px solid rgba(255,255,255,0.15);
-    ">${emoji}</div>`,
-    iconSize: [42, 42],
-    iconAnchor: [21, 21],
+    html: `<div style="position:relative;width:${size}px;height:${size + 12}px;">
+      <div class="lda-pin-halo" style="
+        position:absolute;top:-6px;left:50%;transform:translateX(-50%);
+        width:${size + 24}px;height:${size + 24}px;border-radius:50%;
+        background:radial-gradient(circle,${col.g} 0%,transparent 60%);
+      "></div>
+      <div style="
+        position:relative;width:${size}px;height:${size}px;
+        background:linear-gradient(180deg,${col.c},${col.d});
+        border-radius:${size / 2}px ${size / 2}px ${size / 2}px 4px;
+        transform:rotate(-45deg);
+        border:2px solid #fff;
+        box-shadow:0 4px 0 rgba(0,0,0,0.4),0 0 16px ${col.g},inset 0 2px 0 rgba(255,255,255,0.5);
+        display:flex;align-items:center;justify-content:center;">
+        <div style="transform:rotate(45deg);">
+          <svg width="${chestSize}" height="${chestSize}" viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="11" width="18" height="10" rx="1" fill="${chestColor}"/>
+            <path d="M3 11Q3 5 12 5Q21 5 21 11Z" fill="${chestColor}"/>
+            <rect x="10.5" y="8" width="3" height="6" fill="${chestColor}" stroke="${chestColor}" stroke-width="0.5"/>
+          </svg>
+        </div>
+      </div>
+    </div>`,
+    iconSize: [size + 24, size + 12],
+    iconAnchor: [(size + 24) / 2, size + 8],
   });
 }
 
@@ -302,7 +374,7 @@ function MarkerCluster({
 
       lootBoxes.forEach((box) => {
         const marker = L.marker([box.latitude, box.longitude], {
-          icon: lootBoxIcon(box.isActive, box.category),
+          icon: lootBoxIcon(box),
         });
         marker.on("click", () => onLootBoxPress(box));
         marker.bindPopup(buildPopupContent(box));
