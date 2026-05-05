@@ -173,10 +173,10 @@ export const Fonts = Platform.select({
     mono: "monospace",
   },
   web: {
-    display: "'Lilita One', 'Baloo 2', 'Fredoka', cursive",
-    sans: "'Nunito', 'Quicksand', 'Poppins', system-ui, sans-serif",
+    display: "'Nunito', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+    sans: "'Nunito', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
     serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'Nunito', 'Quicksand', system-ui, sans-serif",
+    rounded: "'Nunito', system-ui, -apple-system, sans-serif",
     mono: "'JetBrains Mono', 'Fira Code', 'SF Mono', monospace",
   },
 });

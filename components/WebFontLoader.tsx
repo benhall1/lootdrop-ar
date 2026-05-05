@@ -3,7 +3,7 @@ import { Platform } from "react-native";
 
 /**
  * Injects Google Fonts into <head> on web.
- * Uses Lilita One (display headings), Nunito (body), JetBrains Mono (codes/timers).
+ * Uses Nunito (display + body, weights 400-900) and JetBrains Mono (codes/timers).
  * No-op on native platforms.
  */
 export function WebFontLoader() {
@@ -30,7 +30,7 @@ export function WebFontLoader() {
     link.id = FONT_ID;
     link.rel = "stylesheet";
     link.href =
-      "https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap";
+      "https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap";
     document.head.appendChild(link);
 
     // PWA meta tags

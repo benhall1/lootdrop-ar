@@ -176,7 +176,7 @@ export function Coupon3D({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontFamily: "'Lilita One', cursive",
+                fontFamily: "'Nunito', system-ui, sans-serif",
                 fontSize: 18,
                 color: "#fff",
                 border: "1.5px solid rgba(255,255,255,0.3)",
@@ -218,7 +218,7 @@ export function Coupon3D({
           {/* Big deal */}
           <div
             style={{
-              fontFamily: "'Lilita One', cursive",
+              fontFamily: "'Nunito', system-ui, sans-serif",
               fontSize: 64,
               color: "#fff",
               letterSpacing: -2,
@@ -326,7 +326,7 @@ export function Coupon3D({
         >
           <div
             style={{
-              fontFamily: "'Lilita One', cursive",
+              fontFamily: "'Nunito', system-ui, sans-serif",
               fontSize: 16,
               color: "#FFD54F",
               letterSpacing: 1,
@@ -355,7 +355,7 @@ export function Coupon3D({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontFamily: "'Lilita One', cursive",
+                  fontFamily: "'Nunito', system-ui, sans-serif",
                   color: "#FFD54F",
                   fontSize: 12,
                 }}
