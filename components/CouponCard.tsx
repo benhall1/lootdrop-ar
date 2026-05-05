@@ -1,10 +1,8 @@
 import React from "react";
 import { View, StyleSheet, Pressable, Platform } from "react-native";
-import { Feather } from "@expo/vector-icons";
 import { ThemedText } from "./ThemedText";
-import { BusinessLogo } from "./BusinessLogo";
 import { useTheme } from "../hooks/useTheme";
-import { Spacing, BorderRadius, Typography, Shadows, Fonts, WebShadows, Gradients } from "../constants/theme";
+import { Spacing, BorderRadius, Fonts } from "../constants/theme";
 import { CollectedCoupon } from "../types";
 
 interface CouponCardProps {
@@ -12,103 +10,232 @@ interface CouponCardProps {
   onPress?: () => void;
 }
 
+type Rarity = "common" | "rare" | "epic" | "legendary";
+
+const RARITY: Record<Rarity, { c: string; g: string; label: string }> = {
+  legendary: { c: "#FFD54F", g: "rgba(255,213,79,0.5)", label: "★ LEGENDARY" },
+  epic: { c: "#C77DFF", g: "rgba(199,125,255,0.5)", label: "★ EPIC" },
+  rare: { c: "#00E5FF", g: "rgba(0,229,255,0.5)", label: "RARE" },
+  common: { c: "#8E96C8", g: "rgba(142,150,200,0.4)", label: "COMMON" },
+};
+
+const PALETTE = ["#FF6D3A", "#9D4EDD", "#00B8D4", "#34D399", "#E89B5E", "#FF3DCB"];
+
+function hashColor(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) & 0xffffff;
+  return PALETTE[Math.abs(h) % PALETTE.length];
+}
+
+function deriveRarity(coupon: CollectedCoupon): Rarity {
+  if (coupon.discountType === "percentage") {
+    const v = parseFloat(coupon.value.replace(/[^\d.]/g, "")) || 0;
+    if (v >= 50) return "legendary";
+    if (v >= 25) return "epic";
+    return "rare";
+  }
+  if (coupon.discountType === "freeItem") return "epic";
+  if (coupon.discountType === "fixed") {
+    const v = parseFloat(coupon.value.replace(/[^\d.]/g, "")) || 0;
+    if (v >= 20) return "epic";
+    return "rare";
+  }
+  return "common";
+}
+
+function shortLogo(name: string): string {
+  return name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 export function CouponCard({ coupon, onPress }: CouponCardProps) {
   const { theme } = useTheme();
   const isExpired = coupon.expiresAt < Date.now();
-  const expiresIn = Math.floor((coupon.expiresAt - Date.now()) / (1000 * 60 * 60 * 24));
-
-  const statusColor = coupon.isUsed
-    ? theme.textSecondary
+  const expiresIn = Math.max(0, Math.floor((coupon.expiresAt - Date.now()) / (1000 * 60 * 60 * 24)));
+  const rarity = deriveRarity(coupon);
+  const r = RARITY[rarity];
+  const color = hashColor(coupon.businessName);
+  const dimmed = coupon.isUsed || isExpired;
+  const statusLabel = coupon.isUsed
+    ? "REDEEMED"
     : isExpired
-    ? theme.error
-    : theme.success;
-
-  const statusText = coupon.isUsed ? "USED" : isExpired ? "EXPIRED" : `${expiresIn}d LEFT`;
-  const statusIcon = coupon.isUsed ? "check" : isExpired ? "x" : "clock";
+    ? "EXPIRED"
+    : `EXP ${expiresIn}d`;
 
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
-        styles.container,
+        styles.outer,
         {
-          backgroundColor: theme.backgroundDefault,
-          borderColor: coupon.isUsed ? theme.border : theme.primary + "30",
-          opacity: pressed ? 0.85 : coupon.isUsed ? 0.5 : 1,
-          ...Platform.select({
-            web: !coupon.isUsed && !isExpired
-              ? {
-                  background: `${Gradients.web.cardSheen}, ${theme.backgroundDefault}`,
-                  boxShadow: WebShadows.card,
-                  transition: "transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease",
-                }
-              : {
-                  boxShadow: WebShadows.insetGlow,
-                  transition: "opacity 0.2s ease",
-                },
-            default: !coupon.isUsed && !isExpired ? Shadows.card : {},
-          }),
+          opacity: pressed ? 0.9 : 1,
+          transform: pressed ? [{ translateY: 1 }] : undefined,
         },
       ]}
     >
-      {/* Decorative notch cutouts */}
-      <View style={[styles.notchLeft, { backgroundColor: theme.backgroundRoot }]} />
-      <View style={[styles.notchRight, { backgroundColor: theme.backgroundRoot }]} />
-
-      <View style={styles.topSection}>
-        <View style={styles.headerRow}>
-          <BusinessLogo
-            businessName={coupon.businessName}
-            logoUrl={coupon.businessLogo}
-            size={44}
+      <View
+        style={[
+          styles.card,
+          {
+            borderColor: dimmed ? theme.border : r.c + "66",
+            ...Platform.select({
+              web: {
+                background: dimmed
+                  ? "linear-gradient(135deg, #232A4D 0%, #181D38 130%)"
+                  : `linear-gradient(135deg, ${color} 0%, ${color}cc 50%, #181D38 130%)`,
+                boxShadow: dimmed
+                  ? "0 4px 0 #0a0d1c"
+                  : `0 4px 0 #0a0d1c, 0 0 24px ${r.g}, inset 0 2px 0 rgba(255,255,255,0.2)`,
+                filter: dimmed ? "grayscale(0.7) brightness(0.6)" : undefined,
+              },
+              default: {
+                backgroundColor: dimmed ? theme.backgroundSecondary : color,
+              },
+            }),
+          },
+        ]}
+      >
+        {/* Shine overlay */}
+        {!dimmed && (
+          <View
+            pointerEvents="none"
+            style={[
+              StyleSheet.absoluteFillObject,
+              Platform.select({
+                web: {
+                  background:
+                    "linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 35%, transparent 65%, rgba(255,255,255,0.1) 100%)",
+                } as any,
+                default: { opacity: 0 },
+              }) as any,
+            ]}
           />
-          <View style={styles.headerInfo}>
+        )}
+
+        {/* Notch cutouts */}
+        <View
+          style={[
+            styles.notchLeft,
+            { backgroundColor: theme.backgroundRoot },
+          ]}
+        />
+        <View
+          style={[
+            styles.notchRight,
+            { backgroundColor: theme.backgroundRoot },
+          ]}
+        />
+
+        {/* Perforation */}
+        <View style={styles.perforation}>
+          {Array.from({ length: 24 }).map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.perfDot,
+                { backgroundColor: "rgba(255,255,255,0.4)" },
+              ]}
+            />
+          ))}
+        </View>
+
+        {/* Top: rarity tag + logo */}
+        <View style={styles.topRow}>
+          <View
+            style={[
+              styles.logo,
+              {
+                ...Platform.select({
+                  web: {
+                    background: "rgba(255,255,255,0.25)",
+                    backdropFilter: "blur(8px)",
+                  } as any,
+                  default: { backgroundColor: "rgba(255,255,255,0.25)" },
+                }) as any,
+              },
+            ]}
+          >
             <ThemedText
-              style={[styles.businessName, { color: theme.textSecondary }]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
+              style={[styles.logoText, { fontFamily: Fonts?.display }]}
             >
-              {coupon.businessName}
-            </ThemedText>
-            <ThemedText
-              type="h4"
-              style={styles.couponTitle}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {coupon.title}
+              {shortLogo(coupon.businessName)}
             </ThemedText>
           </View>
-          <View style={[styles.statusPill, { backgroundColor: statusColor + "18" }]}>
-            <Feather name={statusIcon as any} size={12} color={statusColor} />
-            <ThemedText style={[styles.statusText, { color: statusColor }]}>
-              {statusText}
+          <View
+            style={[
+              styles.rarityTag,
+              {
+                borderColor: r.c + "66",
+              },
+            ]}
+          >
+            <ThemedText
+              style={[
+                styles.rarityText,
+                { color: r.c, fontFamily: Fonts?.sans },
+              ]}
+            >
+              {r.label}
             </ThemedText>
           </View>
         </View>
-      </View>
 
-      {/* Perforated line */}
-      <View style={styles.perforation}>
-        {Array.from({ length: 20 }).map((_, i) => (
-          <View
-            key={i}
-            style={[styles.perfDot, { backgroundColor: theme.border }]}
-          />
-        ))}
-      </View>
-
-      <View style={styles.bottomSection}>
+        {/* Big deal value */}
         <ThemedText
-          style={[styles.value, { color: theme.primary, fontFamily: Fonts?.display }]}
+          style={[styles.deal, { fontFamily: Fonts?.display }]}
+          numberOfLines={1}
         >
           {coupon.value}
         </ThemedText>
-        <View style={[styles.codeBox, { backgroundColor: theme.backgroundSecondary, borderColor: theme.border }]}>
-          <ThemedText
-            style={[styles.codeText, { color: theme.text, fontFamily: Fonts?.mono }]}
+        <ThemedText style={styles.sub} numberOfLines={1}>
+          {coupon.title}
+        </ThemedText>
+
+        {/* Status overlay */}
+        {dimmed && (
+          <View
+            style={[
+              styles.statusStamp,
+              {
+                backgroundColor: coupon.isUsed
+                  ? "rgba(52,211,153,0.9)"
+                  : "rgba(255,85,119,0.9)",
+              },
+            ]}
           >
-            {coupon.code}
+            <ThemedText
+              style={[
+                styles.statusStampText,
+                { fontFamily: Fonts?.display },
+              ]}
+            >
+              {coupon.isUsed ? "REDEEMED" : "EXPIRED"}
+            </ThemedText>
+          </View>
+        )}
+
+        {/* Footer */}
+        <View style={styles.footerRow}>
+          <ThemedText
+            style={[
+              styles.businessName,
+              { fontFamily: Fonts?.sans },
+            ]}
+            numberOfLines={1}
+          >
+            {coupon.businessName}
+          </ThemedText>
+          <ThemedText
+            style={[
+              styles.expiry,
+              { fontFamily: Fonts?.mono },
+            ]}
+          >
+            {statusLabel}
           </ThemedText>
         </View>
       </View>
@@ -117,17 +244,21 @@ export function CouponCard({ coupon, onPress }: CouponCardProps) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1.5,
+  outer: {
     marginBottom: Spacing.lg,
+  },
+  card: {
+    position: "relative",
+    borderRadius: 18,
+    borderWidth: 1.5,
+    padding: 16,
     overflow: "hidden",
+    minHeight: 180,
   },
   notchLeft: {
     position: "absolute",
     left: -10,
-    top: "50%",
-    marginTop: -10,
+    bottom: 56,
     width: 20,
     height: 20,
     borderRadius: 10,
@@ -136,82 +267,116 @@ const styles = StyleSheet.create({
   notchRight: {
     position: "absolute",
     right: -10,
-    top: "50%",
-    marginTop: -10,
+    bottom: 56,
     width: 20,
     height: 20,
     borderRadius: 10,
     zIndex: 2,
   },
-  topSection: {
-    padding: Spacing.lg,
-    paddingBottom: Spacing.md,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.md,
-  },
-  headerInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  businessName: {
-    fontSize: 12,
-    fontWeight: "600",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
-  },
-  couponTitle: {
-    fontSize: 17,
-  },
-  statusPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.full,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: "800",
-    letterSpacing: 0.8,
-  },
   perforation: {
+    position: "absolute",
+    left: 8,
+    right: 8,
+    bottom: 64,
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: Spacing.lg,
-    marginVertical: 2,
+    opacity: 0.7,
   },
   perfDot: {
     width: 4,
-    height: 4,
-    borderRadius: 2,
-    opacity: 0.4,
+    height: 1.5,
+    borderRadius: 1,
   },
-  bottomSection: {
+  topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: Spacing.sm,
+    zIndex: 3,
+  },
+  logo: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.3)",
     alignItems: "center",
-    padding: Spacing.lg,
-    paddingTop: Spacing.md,
+    justifyContent: "center",
   },
-  value: {
-    fontSize: 28,
-    fontWeight: "800",
-    letterSpacing: -0.5,
-  },
-  codeBox: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.sm,
-    borderWidth: 1,
-    borderStyle: "dashed",
-  },
-  codeText: {
+  logoText: {
+    color: "#fff",
     fontSize: 14,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  rarityTag: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    borderWidth: 1,
+  },
+  rarityText: {
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 0.8,
+  },
+  deal: {
+    color: "#fff",
+    fontSize: 44,
+    fontWeight: "900",
+    letterSpacing: -1.5,
+    lineHeight: 44,
+    marginTop: Spacing.lg,
+    textShadowColor: "rgba(0,0,0,0.3)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 0,
+  },
+  sub: {
+    color: "rgba(255,255,255,0.9)",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginTop: 2,
+  },
+  statusStamp: {
+    position: "absolute",
+    top: "45%",
+    alignSelf: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+    borderWidth: 2,
+    borderColor: "#fff",
+    borderRadius: 4,
+    zIndex: 5,
+    transform: [{ rotate: "-12deg" }],
+  },
+  statusStampText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  footerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    marginTop: "auto",
+    paddingTop: 24,
+    zIndex: 3,
+  },
+  businessName: {
+    flex: 1,
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  expiry: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 10,
     fontWeight: "700",
-    letterSpacing: 2,
   },
 });
