@@ -1,4 +1,4 @@
-export type LocationCategory = "restaurant" | "retail" | "entertainment" | "services";
+export type LocationCategory = "restaurant" | "retail" | "entertainment" | "services" | "other";
 
 export interface LootBox {
   id: string;

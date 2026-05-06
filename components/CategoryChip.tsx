@@ -18,6 +18,7 @@ const categoryConfig: Record<LocationCategory, { icon: string; label: string; em
   retail: { icon: "shopping-bag", label: "Retail", emoji: "🛍" },
   entertainment: { icon: "film", label: "Fun", emoji: "🎮" },
   services: { icon: "tool", label: "Services", emoji: "⚡" },
+  other: { icon: "more-horizontal", label: "Other", emoji: "✨" },
 };
 
 export function CategoryChip({ category, selected, onPress }: CategoryChipProps) {

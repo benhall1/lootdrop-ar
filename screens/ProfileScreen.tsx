@@ -414,6 +414,8 @@ export default function ProfileScreen() {
             onComplete={() => {
               setShowOnboardingModal(false);
               loadProfile(); // Reload to pick up merchant role
+              // Hand off into the merchant portal once the close animation finishes
+              setTimeout(() => setShowMerchantModal(true), 350);
             }}
           />
         </View>
