@@ -388,17 +388,17 @@ export default function ProfileScreen() {
         presentationStyle="fullScreen"
         onRequestClose={() => setShowOnboardingModal(false)}
       >
-        <View style={{ flex: 1, backgroundColor: theme.backgroundRoot }}>
+        <View style={{ flex: 1, backgroundColor: "#0a0d1c" }}>
           <View
             style={[
               styles.modalHeader,
               {
-                backgroundColor: theme.backgroundDefault,
-                borderBottomColor: theme.border,
+                backgroundColor: "rgba(15, 19, 38, 0.95)",
+                borderBottomColor: "rgba(0, 229, 255, 0.2)",
               },
             ]}
           >
-            <ThemedText type="h3">Become a Merchant</ThemedText>
+            <ThemedText type="h3" style={{ color: "#fff" }}>Become a Merchant</ThemedText>
             <Pressable
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -406,7 +406,7 @@ export default function ProfileScreen() {
               }}
               style={styles.closeButton}
             >
-              <Feather name="x" size={24} color={theme.text} />
+              <Feather name="x" size={24} color="#fff" />
             </Pressable>
           </View>
           <MerchantOnboardingScreen
