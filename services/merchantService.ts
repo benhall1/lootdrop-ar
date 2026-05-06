@@ -5,7 +5,7 @@ export interface MerchantDrop {
   title: string;
   value: string;
   code: string;
-  expiresIn: string;
+  expiresAt: number; // epoch ms
   totalClaims: number;
   maxClaims: number;
   active: boolean;
@@ -16,22 +16,12 @@ export interface CreateDropInput {
   value: string;
   code: string;
   maxClaims: number;
+  durationDays: number;
   merchantId: string;
   businessName: string;
   category: string;
   latitude: number;
   longitude: number;
-}
-
-function formatExpiresIn(expiresAt: string): string {
-  const now = Date.now();
-  const expires = new Date(expiresAt).getTime();
-  const diffMs = expires - now;
-  if (diffMs <= 0) return "Expired";
-  const days = Math.floor(diffMs / 86400000);
-  if (days > 0) return `${days}d`;
-  const hours = Math.floor(diffMs / 3600000);
-  return `${hours}h`;
 }
 
 function formatValue(discountType: string, discountValue: number): string {
@@ -41,10 +31,11 @@ function formatValue(discountType: string, discountValue: number): string {
 }
 
 // Mock fallback
+const NOW = () => Date.now();
 const MOCK_DROPS: MerchantDrop[] = [
-  { id: "1", title: "20% Off Any Pizza", value: "20% OFF", code: "PIZZA20", expiresIn: "3d", totalClaims: 47, maxClaims: 100, active: true },
-  { id: "2", title: "Free Side with Entree", value: "FREE SIDE", code: "FREESIDE", expiresIn: "1d", totalClaims: 89, maxClaims: 100, active: true },
-  { id: "3", title: "Buy 1 Get 1 Half Off", value: "BOGO 50%", code: "BOGO50", expiresIn: "Expired", totalClaims: 100, maxClaims: 100, active: false },
+  { id: "1", title: "20% Off Any Pizza", value: "20% OFF", code: "PIZZA20", expiresAt: NOW() + 3 * 86400000, totalClaims: 47, maxClaims: 100, active: true },
+  { id: "2", title: "Free Side with Entree", value: "FREE SIDE", code: "FREESIDE", expiresAt: NOW() + 86400000, totalClaims: 89, maxClaims: 100, active: true },
+  { id: "3", title: "Buy 1 Get 1 Half Off", value: "BOGO 50%", code: "BOGO50", expiresAt: NOW() - 86400000, totalClaims: 100, maxClaims: 100, active: false },
 ];
 
 export class MerchantService {
@@ -69,7 +60,7 @@ export class MerchantService {
         title: box.coupon_title,
         value: formatValue(box.discount_type, box.discount_value),
         code: box.coupon_code,
-        expiresIn: formatExpiresIn(box.expires_at),
+        expiresAt: new Date(box.expires_at).getTime(),
         totalClaims: box.claims_count,
         maxClaims: box.max_claims || 999,
         active: box.is_active,
@@ -94,13 +85,16 @@ export class MerchantService {
   }
 
   static async createDrop(input: CreateDropInput): Promise<MerchantDrop | null> {
+    const durationDays = Math.max(1, input.durationDays || 7);
+    const expiresAtMs = Date.now() + durationDays * 86400000;
+
     if (!isSupabaseConfigured) {
       return {
         id: Date.now().toString(),
         title: input.title,
         value: input.value,
         code: input.code.toUpperCase(),
-        expiresIn: "7d",
+        expiresAt: expiresAtMs,
         totalClaims: 0,
         maxClaims: input.maxClaims,
         active: true,
@@ -109,7 +103,7 @@ export class MerchantService {
 
     try {
       const now = new Date();
-      const expiresAt = new Date(now.getTime() + 7 * 86400000); // 7 days
+      const expiresAt = new Date(expiresAtMs);
 
       const { data, error } = await supabase
         .from("loot_boxes")
@@ -138,7 +132,7 @@ export class MerchantService {
         title: data.coupon_title,
         value: formatValue(data.discount_type, data.discount_value),
         code: data.coupon_code,
-        expiresIn: "7d",
+        expiresAt: new Date(data.expires_at).getTime(),
         totalClaims: 0,
         maxClaims: data.max_claims || input.maxClaims,
         active: true,

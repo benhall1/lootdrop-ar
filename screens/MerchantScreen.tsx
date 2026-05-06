@@ -21,6 +21,80 @@ import { AuthService, User } from "../services/authService";
 
 type LootDrop = MerchantDrop;
 
+const DURATION_OPTIONS = [1, 3, 7, 14, 30] as const;
+
+function formatRelativeExpiry(expiresAt: number, now: number): { label: string; ended: boolean; urgent: boolean } {
+  const diff = expiresAt - now;
+  if (diff <= 0) return { label: "ENDED", ended: true, urgent: false };
+  const days = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  const minutes = Math.floor((diff % 3600000) / 60000);
+  const seconds = Math.floor((diff % 60000) / 1000);
+  const urgent = diff < 60 * 60 * 1000; // < 1h
+  if (days > 0) return { label: `${days}d ${hours}h`, ended: false, urgent: false };
+  if (hours > 0) return { label: `${hours}h ${minutes}m`, ended: false, urgent };
+  if (minutes > 0) return { label: `${minutes}m ${seconds}s`, ended: false, urgent };
+  return { label: `${seconds}s`, ended: false, urgent: true };
+}
+
+function formatExpiryDate(expiresAt: number): string {
+  try {
+    const d = new Date(expiresAt);
+    return d.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
+}
+
+function DropCountdown({ expiresAt, ended }: { expiresAt: number; ended: boolean }) {
+  const { theme } = useTheme();
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (ended) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [ended]);
+
+  const { label, urgent, ended: liveEnded } = formatRelativeExpiry(expiresAt, now);
+  const isEnded = ended || liveEnded;
+
+  const color = isEnded ? theme.textSecondary : urgent ? theme.warning : theme.primary;
+  const bg = isEnded ? theme.backgroundTertiary : urgent ? theme.warning + "20" : theme.primary + "15";
+  const border = isEnded ? theme.border : urgent ? theme.warning + "60" : theme.primary + "40";
+
+  return (
+    <View
+      style={[
+        merchantStyles.countdownBadge,
+        {
+          backgroundColor: bg,
+          borderColor: border,
+        },
+      ]}
+    >
+      <Feather
+        name={isEnded ? "x-circle" : "clock"}
+        size={11}
+        color={color}
+      />
+      <ThemedText
+        style={[
+          merchantStyles.countdownText,
+          { color, fontFamily: Fonts?.mono },
+        ]}
+      >
+        {isEnded ? "ENDED" : label}
+      </ThemedText>
+    </View>
+  );
+}
+
 function StatCard({
   icon,
   label,
@@ -68,7 +142,8 @@ function DropCard({
   onToggle: () => void;
 }) {
   const { theme } = useTheme();
-  const claimPct = (drop.totalClaims / drop.maxClaims) * 100;
+  const claimPct = Math.min(100, (drop.totalClaims / Math.max(1, drop.maxClaims)) * 100);
+  const ended = drop.expiresAt > 0 && drop.expiresAt <= Date.now();
 
   return (
     <View
@@ -76,8 +151,12 @@ function DropCard({
         merchantStyles.dropCard,
         {
           backgroundColor: theme.backgroundDefault,
-          borderColor: drop.active ? theme.primary + "30" : theme.border,
-          opacity: drop.active ? 1 : 0.7,
+          borderColor: ended
+            ? theme.border
+            : drop.active
+            ? theme.primary + "30"
+            : theme.border,
+          opacity: ended ? 0.6 : drop.active ? 1 : 0.75,
         },
       ]}
     >
@@ -87,50 +166,61 @@ function DropCard({
             {drop.title}
           </ThemedText>
           <View style={merchantStyles.dropMeta}>
-            <ThemedText style={[merchantStyles.dropValue, { color: theme.secondary }]}>
-              {drop.value}
-            </ThemedText>
+            <View style={[merchantStyles.valueChip, { backgroundColor: theme.secondary + "20", borderColor: theme.secondary + "50" }]}>
+              <ThemedText style={[merchantStyles.dropValue, { color: theme.secondary }]}>
+                {drop.value}
+              </ThemedText>
+            </View>
             <ThemedText style={[merchantStyles.dropCode, { color: theme.textSecondary, fontFamily: Fonts?.mono }]}>
               {drop.code}
             </ThemedText>
           </View>
         </View>
-        <Pressable
-          onPress={onToggle}
-          style={[
-            merchantStyles.toggleBtn,
-            {
-              backgroundColor: drop.active ? theme.success + "15" : theme.error + "15",
-            },
-          ]}
-        >
-          <View
+        <View style={merchantStyles.dropRight}>
+          <DropCountdown expiresAt={drop.expiresAt} ended={ended} />
+          <Pressable
+            onPress={onToggle}
+            disabled={ended}
             style={[
-              merchantStyles.toggleDot,
+              merchantStyles.toggleBtn,
               {
-                backgroundColor: drop.active ? theme.success : theme.error,
+                backgroundColor: drop.active && !ended ? theme.success + "15" : theme.error + "15",
+                opacity: ended ? 0.5 : 1,
               },
             ]}
-          />
-          <ThemedText
-            style={[
-              merchantStyles.toggleText,
-              { color: drop.active ? theme.success : theme.error },
-            ]}
           >
-            {drop.active ? "Live" : "Off"}
-          </ThemedText>
-        </Pressable>
+            <View
+              style={[
+                merchantStyles.toggleDot,
+                {
+                  backgroundColor: drop.active && !ended ? theme.success : theme.error,
+                },
+              ]}
+            />
+            <ThemedText
+              style={[
+                merchantStyles.toggleText,
+                { color: drop.active && !ended ? theme.success : theme.error },
+              ]}
+            >
+              {ended ? "Ended" : drop.active ? "Live" : "Off"}
+            </ThemedText>
+          </Pressable>
+        </View>
       </View>
 
-      {/* Progress bar */}
       <View style={merchantStyles.progressSection}>
         <View style={merchantStyles.progressHeader}>
-          <ThemedText style={[merchantStyles.progressLabel, { color: theme.textSecondary }]}>
-            {drop.totalClaims}/{drop.maxClaims} claimed
+          <ThemedText style={[merchantStyles.progressLabel, { color: theme.text }]}>
+            <ThemedText style={{ fontWeight: "800", fontFamily: Fonts?.mono }}>
+              {drop.totalClaims}
+            </ThemedText>
+            <ThemedText style={{ color: theme.textSecondary }}>
+              {" "}/ {drop.maxClaims} claimed
+            </ThemedText>
           </ThemedText>
           <ThemedText style={[merchantStyles.progressLabel, { color: theme.textSecondary }]}>
-            {drop.expiresIn === "Expired" ? "Expired" : `${drop.expiresIn} left`}
+            {Math.round(claimPct)}%
           </ThemedText>
         </View>
         <View style={[merchantStyles.progressBg, { backgroundColor: theme.backgroundTertiary }]}>
@@ -164,6 +254,22 @@ export default function MerchantScreen() {
     code: "",
     maxClaims: "100",
   });
+  const [durationDays, setDurationDays] = useState<number>(7);
+
+  const sortedDrops = React.useMemo(() => {
+    const now = Date.now();
+    const rank = (d: LootDrop) => {
+      const ended = d.expiresAt > 0 && d.expiresAt <= now;
+      if (!ended && d.active) return 0;
+      if (!ended && !d.active) return 1;
+      return 2;
+    };
+    return [...drops].sort((a, b) => {
+      const r = rank(a) - rank(b);
+      if (r !== 0) return r;
+      return b.expiresAt - a.expiresAt;
+    });
+  }, [drops]);
 
   useEffect(() => {
     const load = async () => {
@@ -203,6 +309,7 @@ export default function MerchantScreen() {
       value: newDrop.value,
       code: newDrop.code,
       maxClaims: parseInt(newDrop.maxClaims) || 100,
+      durationDays,
       merchantId: merchant?.id || "00000000-0000-0000-0000-000000000001",
       businessName: merchant?.businessName || "My Business",
       category: merchant?.businessCategory || "restaurant",
@@ -213,6 +320,7 @@ export default function MerchantScreen() {
       setDrops((prev) => [created, ...prev]);
     }
     setNewDrop({ title: "", value: "", code: "", maxClaims: "100" });
+    setDurationDays(7);
     setShowCreate(false);
     Alert.alert("Drop Created!", `"${newDrop.title}" is now live for customers to discover.`);
   };
@@ -280,6 +388,47 @@ export default function MerchantScreen() {
               ]}
             />
           ))}
+
+          {/* Duration picker */}
+          <View style={merchantStyles.durationSection}>
+            <ThemedText style={[merchantStyles.durationLabel, { color: theme.textSecondary }]}>
+              Drop duration
+            </ThemedText>
+            <View style={merchantStyles.durationRow}>
+              {DURATION_OPTIONS.map((d) => {
+                const selected = durationDays === d;
+                return (
+                  <Pressable
+                    key={d}
+                    onPress={() => {
+                      Haptics.selectionAsync();
+                      setDurationDays(d);
+                    }}
+                    style={[
+                      merchantStyles.durationChip,
+                      {
+                        backgroundColor: selected ? theme.primary : theme.backgroundSecondary,
+                        borderColor: selected ? theme.primary : theme.border,
+                      },
+                    ]}
+                  >
+                    <ThemedText
+                      style={[
+                        merchantStyles.durationChipText,
+                        { color: selected ? "#fff" : theme.text, fontFamily: Fonts?.mono },
+                      ]}
+                    >
+                      {d}d
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <ThemedText style={[merchantStyles.durationPreview, { color: theme.accent, fontFamily: Fonts?.mono }]}>
+              Expires {formatExpiryDate(Date.now() + durationDays * 86400000)}
+            </ThemedText>
+          </View>
+
           <View style={merchantStyles.formActions}>
             <Pressable
               onPress={() => setShowCreate(false)}
@@ -299,11 +448,31 @@ export default function MerchantScreen() {
         <ThemedText type="h4" style={{ fontFamily: Fonts?.display }}>
           Your Drops
         </ThemedText>
-        {drops.map((drop, i) => (
-          <Animated.View key={drop.id} entering={FadeInUp.duration(400).delay(300 + i * 80)}>
-            <DropCard drop={drop} onToggle={() => toggleDrop(drop.id)} />
-          </Animated.View>
-        ))}
+        {!loading && sortedDrops.length === 0 ? (
+          <View
+            style={[
+              merchantStyles.emptyCard,
+              {
+                backgroundColor: theme.backgroundDefault,
+                borderColor: theme.secondary + "50",
+              },
+            ]}
+          >
+            <ThemedText style={merchantStyles.emptyEmoji}>🎁</ThemedText>
+            <ThemedText style={[merchantStyles.emptyTitle, { fontFamily: Fonts?.display }]}>
+              No drops yet
+            </ThemedText>
+            <ThemedText style={[merchantStyles.emptyDesc, { color: theme.textSecondary }]}>
+              Tap “+ New Drop” to launch your first one. Customers nearby will discover it.
+            </ThemedText>
+          </View>
+        ) : (
+          sortedDrops.map((drop, i) => (
+            <Animated.View key={drop.id} entering={FadeInUp.duration(400).delay(300 + i * 80)}>
+              <DropCard drop={drop} onToggle={() => toggleDrop(drop.id)} />
+            </Animated.View>
+          ))
+        )}
       </Animated.View>
 
       {/* Verify Redemption */}
@@ -516,5 +685,81 @@ const merchantStyles = StyleSheet.create({
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
+  },
+  dropRight: {
+    alignItems: "flex-end",
+    gap: Spacing.xs,
+  },
+  countdownBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+  },
+  countdownText: {
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  valueChip: {
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.xs,
+    borderWidth: 1,
+  },
+  durationSection: {
+    gap: Spacing.xs,
+  },
+  durationLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  durationRow: {
+    flexDirection: "row",
+    gap: Spacing.xs,
+    flexWrap: "wrap",
+  },
+  durationChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1.5,
+    minWidth: 52,
+    alignItems: "center",
+  },
+  durationChipText: {
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  durationPreview: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
+  emptyCard: {
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    alignItems: "center",
+    gap: Spacing.sm,
+  },
+  emptyEmoji: {
+    fontSize: 40,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+  },
+  emptyDesc: {
+    fontSize: 13,
+    textAlign: "center",
+    lineHeight: 18,
   },
 });
