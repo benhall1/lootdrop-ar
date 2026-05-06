@@ -148,13 +148,13 @@ export class MerchantService {
     }
   }
 
-  static async verifyClaim(claimId: string, merchantId: string): Promise<{ success: boolean; message: string; couponTitle?: string; couponCode?: string }> {
+  static async verifyClaim(claimId: string, merchantId: string): Promise<{ success: boolean; message: string; customerName?: string; businessName?: string }> {
     if (!isSupabaseConfigured) {
       return { success: false, message: "Supabase not configured" };
     }
 
     try {
-      const { data, error } = await supabase.rpc("verify_claim", {
+      const { data, error } = await supabase.rpc("redeem_claim_by_merchant", {
         p_claim_id: claimId,
         p_merchant_id: merchantId,
       });
@@ -162,11 +162,12 @@ export class MerchantService {
       if (error) return { success: false, message: error.message };
 
       if (data?.success) {
+        const customer = data.customer_name || "customer";
         return {
           success: true,
-          message: `Verified! "${data.coupon_title}" (${data.coupon_code}) redeemed.`,
-          couponTitle: data.coupon_title,
-          couponCode: data.coupon_code,
+          message: `Redeemed for ${customer}! +${data.xp_credited_to_customer || 15} XP credited.`,
+          customerName: data.customer_name,
+          businessName: data.business_name,
         };
       }
       return { success: false, message: data?.message || "Verification failed" };

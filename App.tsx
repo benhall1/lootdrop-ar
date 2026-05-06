@@ -65,6 +65,39 @@ export default function App() {
         meta.content = "#0C0F1A";
         document.head.appendChild(meta);
       }
+      // Phone-frame layout on desktop: center the app in a 480px column
+      // with the rest of the viewport filled with a dark backdrop.
+      if (!document.getElementById("lootdrop-phone-frame")) {
+        const style = document.createElement("style");
+        style.id = "lootdrop-phone-frame";
+        style.textContent = `
+          @media (min-width: 768px) {
+            html, body {
+              background: radial-gradient(ellipse at top, #181D38 0%, #050714 70%) !important;
+            }
+            body {
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            }
+            #root {
+              max-width: 480px;
+              width: 100%;
+              height: 100vh;
+              max-height: 920px;
+              margin: 0 auto;
+              border-radius: 28px;
+              overflow: hidden;
+              box-shadow:
+                0 0 0 1px rgba(255,255,255,0.06),
+                0 30px 80px rgba(0,0,0,0.6),
+                0 0 80px rgba(255,109,58,0.08);
+              flex: none !important;
+            }
+          }
+        `;
+        document.head.appendChild(style);
+      }
     }
 
     return unsubscribe;
